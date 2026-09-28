@@ -1,0 +1,20 @@
+config {
+  type: "view",
+  tags: ["memo"],
+  description: "Download plan: distinct files and stays per cohort level, PhysioNet project, file role and phase. Use it to size a download before exporting paths from x_file_manifest."
+}
+
+SELECT
+  c.level_id,
+  c.cohort_level,
+  m.modality,
+  m.physionet_project,
+  m.physionet_version,
+  m.file_role,
+  m.phase,
+  COUNT(DISTINCT m.stay_id)       AS n_stays,
+  COUNT(DISTINCT m.record_id)     AS n_records,
+  COUNT(DISTINCT m.relative_path) AS n_files
+FROM ${ref("x_file_manifest")} m
+JOIN ${ref("c_cohort")} c USING (stay_id)
+GROUP BY c.level_id, c.cohort_level, m.modality, m.physionet_project, m.physionet_version, m.file_role, m.phase

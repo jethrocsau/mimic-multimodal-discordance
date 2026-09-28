@@ -1,0 +1,71 @@
+config {
+  type: "table",
+  tags: ["memo"],
+  description: "Table C-S2: demographics by 1-year mortality, per cohort level and analysis set (A = full cohort, B = CXR present, C = all 5 modalities, baseline window). BMI: US CDC adult categories + Missing. Anchor year group is a patient-level 3-year group, NOT the admission year."
+}
+
+WITH
+sets AS (
+  SELECT 'A. Full cohort' AS analysis_set, * FROM ${ref("s_level_stay")}
+  UNION ALL
+  SELECT 'B. CXR present', * FROM ${ref("s_level_stay")} WHERE has_cxr
+  UNION ALL
+  SELECT 'C. All 5 modalities', * FROM ${ref("s_level_stay")} WHERE has_all5
+),
+denoms AS (
+  SELECT level_id, analysis_set,
+         COUNTIF(died_1y) AS died_tot, COUNTIF(NOT died_1y) AS alive_tot
+  FROM sets
+  GROUP BY level_id, analysis_set
+),
+cat AS (
+  SELECT level_id, cohort_level, analysis_set, died_1y,
+         1 AS var_order, 'Total' AS variable, 1 AS level_order, 'All patients' AS level
+  FROM sets
+  UNION ALL
+  SELECT level_id, cohort_level, analysis_set, died_1y, 2, 'Age group (years, at hospital admission)',
+    CASE WHEN age < 45 THEN 1 WHEN age < 65 THEN 2 WHEN age < 75 THEN 3 WHEN age < 85 THEN 4 ELSE 5 END,
+    CASE WHEN age < 45 THEN '18-44' WHEN age < 65 THEN '45-64' WHEN age < 75 THEN '65-74'
+         WHEN age < 85 THEN '75-84' ELSE '>=85' END
+  FROM sets
+  UNION ALL
+  SELECT level_id, cohort_level, analysis_set, died_1y, 3, 'Sex',
+    CASE sex WHEN 'F' THEN 1 WHEN 'M' THEN 2 ELSE 3 END,
+    CASE sex WHEN 'F' THEN 'Female' WHEN 'M' THEN 'Male' ELSE 'Unknown' END
+  FROM sets
+  UNION ALL
+  SELECT level_id, cohort_level, analysis_set, died_1y, 4, 'BMI category (kg/m2)',
+    CASE WHEN bmi IS NULL THEN 9 WHEN bmi < 18.5 THEN 1 WHEN bmi < 25 THEN 2 WHEN bmi < 30 THEN 3 ELSE 4 END,
+    CASE WHEN bmi IS NULL THEN 'Missing'
+         WHEN bmi < 18.5 THEN 'Underweight (<18.5)'
+         WHEN bmi < 25   THEN 'Healthy weight (18.5-<25)'
+         WHEN bmi < 30   THEN 'Overweight (25-<30)'
+         ELSE                 'Obesity (>=30)' END
+  FROM sets
+  UNION ALL
+  SELECT level_id, cohort_level, analysis_set, died_1y, 5,
+    'Anchor year group (patient-level 3-yr group; not admission year)',
+    COALESCE(SAFE_CAST(SUBSTR(anchor_year_group, 1, 4) AS INT64), 9999),
+    COALESCE(anchor_year_group, 'Unknown')
+  FROM sets
+),
+cat_counts AS (
+  SELECT level_id, cohort_level, analysis_set, var_order, variable, level_order, level,
+         COUNTIF(died_1y) AS died_n, COUNTIF(NOT died_1y) AS alive_n
+  FROM cat
+  GROUP BY level_id, cohort_level, analysis_set, var_order, variable, level_order, level
+)
+SELECT
+  c.level_id, c.cohort_level, c.analysis_set, c.var_order, c.variable, c.level_order, c.level,
+  c.died_n,
+  ROUND(100 * SAFE_DIVIDE(c.died_n,  d.died_tot),  1) AS died_pct,
+  c.alive_n,
+  ROUND(100 * SAFE_DIVIDE(c.alive_n, d.alive_tot), 1) AS alive_pct,
+  ROUND(100 * SAFE_DIVIDE(c.died_n, c.died_n + c.alive_n), 1) AS mortality_1y_pct,
+  ROUND(SAFE_DIVIDE(
+    SAFE_DIVIDE(c.died_n, d.died_tot) - SAFE_DIVIDE(c.alive_n, d.alive_tot),
+    SQRT(( SAFE_DIVIDE(c.died_n, d.died_tot)   * (1 - SAFE_DIVIDE(c.died_n, d.died_tot))
+         + SAFE_DIVIDE(c.alive_n, d.alive_tot) * (1 - SAFE_DIVIDE(c.alive_n, d.alive_tot))) / 2)
+  ), 3) AS smd_died_vs_alive
+FROM cat_counts c
+JOIN denoms d USING (level_id, analysis_set)

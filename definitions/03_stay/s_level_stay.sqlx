@@ -1,0 +1,14 @@
+config {
+  type: "view",
+  tags: ["stay"],
+  description: "(cohort level x stay) analysis base: each level's stays joined to their summary, with one boolean per modality. Every memo table reads from here."
+}
+
+SELECT
+  c.level_id,
+  c.cohort_level,
+  s.*,
+  ${constants.MODALITIES.map((m) => `(s.base_mask & ${m.bit}) > 0 AS has_${m.key}`).join(",\n  ")},
+  s.base_mask = ${constants.ALL_MODALITIES_MASK} AS has_all5
+FROM ${ref("c_cohort")} c
+JOIN ${ref("s_stay_summary")} s USING (stay_id)

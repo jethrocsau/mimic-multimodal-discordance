@@ -1,0 +1,34 @@
+config {
+  type: "table",
+  tags: ["extract"],
+  description: "Laboratory results (hosp.labevents) for every extraction stay, over [w_start, span_end). Matched by subject_id so ED / pre-admission draws with NULL hadm_id are included. Unit for counting = distinct specimen_id.",
+  bigquery: {
+    clusterBy: ["stay_id", "phase"]
+  }
+}
+
+SELECT
+  ${constants.extractKeys("xs")},
+  ${constants.phase("le.charttime", "xs")} AS phase,
+  le.hadm_id AS source_hadm_id,
+  le.labevent_id,
+  le.specimen_id,
+  le.charttime,
+  ${constants.hoursFrom("le.charttime", "xs.intime")} AS hours_from_icu_admit,
+  le.itemid,
+  dl.label,
+  dl.fluid,
+  dl.category,
+  le.value,
+  le.valuenum,
+  le.valueuom,
+  le.ref_range_lower,
+  le.ref_range_upper,
+  le.flag
+FROM ${ref("x_stays")} xs
+JOIN ${ref("labevents")} le
+  ON le.subject_id = xs.subject_id
+ AND ${constants.inSpan("le.charttime", "xs")}
+LEFT JOIN ${ref("d_labitems")} dl
+  ON dl.itemid = le.itemid
+WHERE le.valuenum IS NOT NULL OR le.value IS NOT NULL

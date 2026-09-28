@@ -1,0 +1,46 @@
+config {
+  type: "table",
+  tags: ["extract"],
+  description: "Union of every stay used by any cohort level, with the level flags and the time windows. Every x_* extraction joins to this.",
+  columns: {
+    w_start: "Modality window start = ICU intime - pre_h",
+    w_end: "Modality window end (exclusive) = ICU intime + post_h. Records in [w_start, w_end) are phase = 'baseline'.",
+    f_end: "Follow-up end = LEAST(ICU outtime, in-hospital deathtime) + follow_tail_h. Records in [w_end, f_end) are phase = 'follow_up'.",
+    span_end: "GREATEST(w_end, f_end): extraction tables hold records in [w_start, span_end)",
+    has_follow_window: "FALSE when the stay ends before the modality window does (no follow-up phase possible)"
+  },
+  assertions: {
+    uniqueKey: ["stay_id"],
+    nonNull: ["stay_id", "subject_id", "intime", "w_start", "w_end", "f_end"]
+  }
+}
+
+WITH
+levels AS (
+  SELECT
+    stay_id,
+    ${constants.LEVELS.map((l) => `LOGICAL_OR(level_id = '${l.id}') AS ${l.flag}`).join(",\n    ")}
+  FROM ${ref("c_cohort")}
+  GROUP BY stay_id
+),
+win AS (
+  SELECT
+    s.stay_id, s.subject_id, s.hadm_id, s.first_careunit, s.intime, s.outtime, s.flag_hf,
+    ${constants.LEVELS.map((l) => `lv.${l.flag}`).join(", ")},
+    adm.deathtime,
+    DATETIME_SUB(s.intime, INTERVAL ${dataform.projectConfig.vars.pre_h} HOUR)  AS w_start,
+    DATETIME_ADD(s.intime, INTERVAL ${dataform.projectConfig.vars.post_h} HOUR) AS w_end,
+    LEAST(
+      DATETIME_ADD(s.outtime, INTERVAL ${dataform.projectConfig.vars.follow_tail_h} HOUR),
+      COALESCE(DATETIME_ADD(adm.deathtime, INTERVAL ${dataform.projectConfig.vars.follow_tail_h} HOUR),
+               DATETIME '9999-12-31 00:00:00')
+    ) AS f_end
+  FROM levels lv
+  JOIN ${ref("c_icu_flags")} s USING (stay_id)
+  LEFT JOIN ${ref("admissions")} adm ON adm.hadm_id = s.hadm_id
+)
+SELECT
+  *,
+  GREATEST(w_end, f_end) AS span_end,
+  (f_end > w_end)        AS has_follow_window
+FROM win

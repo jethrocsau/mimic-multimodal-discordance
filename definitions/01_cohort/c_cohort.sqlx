@@ -1,0 +1,39 @@
+config {
+  type: "table",
+  tags: ["cohort"],
+  description: "Long table of the three cohort levels: one row per (cohort level, patient), holding that level's first eligible stay. Filter on level_id to get one level. Common criteria: age >= 18, ICU LOS >= 24h, no in-hospital death within 24h of ICU admission.",
+  columns: {
+    level_id: "L1 = CCU + HF ICD (primary); L2 = CCU, no HF ICD requirement; L3 = CCU or CVICU, no HF ICD requirement",
+    cohort_level: "Readable label for level_id"
+  },
+  assertions: {
+    uniqueKeys: [["level_id", "subject_id"], ["level_id", "stay_id"]],
+    nonNull: ["level_id", "stay_id", "subject_id", "intime"]
+  }
+}
+
+WITH
+eligible AS (
+  SELECT *
+  FROM ${ref("c_icu_flags")}
+  WHERE flag_age AND flag_los AND NOT flag_died_before_24h
+),
+candidates AS (
+  SELECT 'L1' AS level_id, * FROM eligible WHERE flag_ccu AND flag_hf
+  UNION ALL
+  SELECT 'L2' AS level_id, * FROM eligible WHERE flag_ccu
+  UNION ALL
+  SELECT 'L3' AS level_id, * FROM eligible WHERE flag_ccu OR flag_cvicu
+),
+ranked AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (PARTITION BY level_id, subject_id ORDER BY intime, stay_id) AS rn
+  FROM candidates
+)
+SELECT
+  level_id,
+  ${constants.levelLabelCase("level_id")} AS cohort_level,
+  * EXCEPT (level_id, rn)
+FROM ranked
+WHERE rn = 1

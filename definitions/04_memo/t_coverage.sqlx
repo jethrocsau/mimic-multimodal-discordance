@@ -1,0 +1,38 @@
+config {
+  type: "table",
+  tags: ["memo"],
+  description: "Long coverage table: cohort level x definition x modality combination, with 1-year mortality. definition = 'baseline' (>= 1 record in the modality window) or 'repeat' (>= 1 in the window AND >= 1 in follow-up). A stay covers a combination when (stay_mask & combo_mask) = combo_mask. Table C, C-S1, C-2 and C-S4 are views on this table.",
+  assertions: {
+    uniqueKey: ["level_id", "definition", "mask"]
+  }
+}
+
+WITH
+defs AS (
+  SELECT level_id, cohort_level, stay_id, died_1y, 'baseline' AS definition, base_mask AS stay_mask
+  FROM ${ref("s_level_stay")}
+  UNION ALL
+  SELECT level_id, cohort_level, stay_id, died_1y, 'repeat' AS definition, rep_mask AS stay_mask
+  FROM ${ref("s_level_stay")}
+),
+counts AS (
+  SELECT
+    d.level_id, d.cohort_level, d.definition,
+    cb.mask, cb.size, cb.included_modalities, cb.in_table_c,
+    COUNT(*)                                                          AS cohort_n,
+    COUNTIF(d.died_1y)                                                AS cohort_died_1y,
+    COUNTIF(NOT d.died_1y)                                            AS cohort_alive_1y,
+    COUNTIF((d.stay_mask & cb.mask) = cb.mask)                        AS n,
+    COUNTIF((d.stay_mask & cb.mask) = cb.mask AND d.died_1y)          AS n_died_1y,
+    COUNTIF((d.stay_mask & cb.mask) = cb.mask AND NOT d.died_1y)      AS n_alive_1y
+  FROM defs d
+  CROSS JOIN ${ref("t_modality_combos")} cb
+  GROUP BY d.level_id, d.cohort_level, d.definition, cb.mask, cb.size, cb.included_modalities, cb.in_table_c
+)
+SELECT
+  *,
+  ROUND(100 * SAFE_DIVIDE(n, cohort_n), 1)                   AS pct_of_cohort,
+  ROUND(100 * SAFE_DIVIDE(n_died_1y, n), 1)                  AS mortality_1y_pct,
+  ROUND(100 * SAFE_DIVIDE(n_died_1y, cohort_died_1y), 1)     AS pct_of_died_stratum,
+  ROUND(100 * SAFE_DIVIDE(n_alive_1y, cohort_alive_1y), 1)   AS pct_of_alive_stratum
+FROM counts

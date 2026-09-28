@@ -1,0 +1,91 @@
+config {
+  type: "table",
+  tags: ["extract"],
+  description: "Download manifest: one row per (stay, file) for every modality record in x_*, with the PhysioNet project, relative path and full URL. Filter by level flag, phase / hours_from_icu_admit and file_role, then export DISTINCT relative_path per physionet_project as a wget -i list. Notes, vitals and labs have no per-record files on PhysioNet: they are rows in BigQuery (already in x_notes / x_vitals / x_labs), so notes appear here with file_role = 'bigquery_row' and a NULL path.",
+  columns: {
+    physionet_project: "PhysioNet project slug: mimic-cxr-jpg, mimic-cxr, mimic-iv-ecg, or mimic-iv-note",
+    file_role: "cxr_image_jpg | cxr_image_dicom | cxr_report_txt | ecg_header | ecg_signal | bigquery_row",
+    relative_path: "Path inside the PhysioNet project (use with wget --base=<project URL>); NULL for bigquery_row",
+    url: "Full download URL; NULL for bigquery_row",
+    record_id: "study_id (CXR report, ECG), dicom_id (CXR image) or note_id (notes)"
+  },
+  bigquery: {
+    clusterBy: ["physionet_project", "file_role", "stay_id"]
+  }
+}
+
+WITH
+cxr_img AS (
+  SELECT * FROM ${ref("x_cxr")}
+),
+cxr_study AS (
+  SELECT DISTINCT
+    stay_id, subject_id, hadm_id,
+    ${constants.LEVELS.map((l) => l.flag).join(", ")},
+    anchor_icu_intime, phase, study_id, study_dt, hours_from_icu_admit
+  FROM ${ref("x_cxr")}
+),
+files AS (
+  -- CXR images, JPG (MIMIC-CXR-JPG)
+  SELECT
+    ${constants.carryKeys("x")},
+    'CXR' AS modality,
+    'mimic-cxr-jpg' AS physionet_project,
+    '${dataform.projectConfig.vars.cxr_jpg_version}' AS physionet_version,
+    'cxr_image_jpg' AS file_role,
+    x.dicom_id AS record_id,
+    x.study_id,
+    x.ViewPosition AS view_position,
+    x.study_dt AS record_time,
+    x.hours_from_icu_admit,
+    x.phase,
+    x.jpg_path AS relative_path
+  FROM cxr_img x
+  UNION ALL
+  -- CXR images, original DICOM (MIMIC-CXR)
+  SELECT
+    ${constants.carryKeys("x")},
+    'CXR', 'mimic-cxr', '${dataform.projectConfig.vars.cxr_version}', 'cxr_image_dicom',
+    x.dicom_id, x.study_id, x.ViewPosition, x.study_dt, x.hours_from_icu_admit, x.phase,
+    REGEXP_REPLACE(x.jpg_path, r'[.]jpg$', '.dcm')
+  FROM cxr_img x
+  UNION ALL
+  -- CXR free-text report, one per study (MIMIC-CXR): files/pXX/pSUBJECT/sSTUDY.txt
+  SELECT
+    ${constants.carryKeys("x")},
+    'CXR', 'mimic-cxr', '${dataform.projectConfig.vars.cxr_version}', 'cxr_report_txt',
+    CAST(x.study_id AS STRING), x.study_id, CAST(NULL AS STRING), x.study_dt, x.hours_from_icu_admit, x.phase,
+    CONCAT('files/p', SUBSTR(CAST(x.subject_id AS STRING), 1, 2),
+           '/p', CAST(x.subject_id AS STRING),
+           '/s', CAST(x.study_id AS STRING), '.txt')
+  FROM cxr_study x
+  UNION ALL
+  -- ECG WFDB header (MIMIC-IV-ECG): <path>.hea
+  SELECT
+    ${constants.carryKeys("x")},
+    'ECG', 'mimic-iv-ecg', '${dataform.projectConfig.vars.ecg_version}', 'ecg_header',
+    CAST(x.study_id AS STRING), x.study_id, CAST(NULL AS STRING), x.ecg_time, x.hours_from_icu_admit, x.phase,
+    CONCAT(x.path, '.hea')
+  FROM ${ref("x_ecg")} x
+  UNION ALL
+  -- ECG WFDB signal (MIMIC-IV-ECG): <path>.dat
+  SELECT
+    ${constants.carryKeys("x")},
+    'ECG', 'mimic-iv-ecg', '${dataform.projectConfig.vars.ecg_version}', 'ecg_signal',
+    CAST(x.study_id AS STRING), x.study_id, CAST(NULL AS STRING), x.ecg_time, x.hours_from_icu_admit, x.phase,
+    CONCAT(x.path, '.dat')
+  FROM ${ref("x_ecg")} x
+  UNION ALL
+  -- Radiology notes: no per-note file on PhysioNet (distributed as one CSV); text is in x_notes
+  SELECT
+    ${constants.carryKeys("x")},
+    'Notes', 'mimic-iv-note', CAST(NULL AS STRING), 'bigquery_row',
+    x.note_id, CAST(NULL AS INT64), CAST(NULL AS STRING), x.charttime, x.hours_from_icu_admit, x.phase,
+    CAST(NULL AS STRING)
+  FROM ${ref("x_notes")} x
+)
+SELECT
+  *,
+  IF(relative_path IS NULL, NULL,
+     CONCAT('https://physionet.org/files/', physionet_project, '/', physionet_version, '/', relative_path)) AS url
+FROM files

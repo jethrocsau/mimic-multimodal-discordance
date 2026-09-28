@@ -1,0 +1,19 @@
+config {
+  type: "view",
+  tags: ["memo"],
+  description: "Table C-2: repeat coverage (>= 1 record in the modality window AND >= 1 in follow-up for every listed modality), all 32 combinations, per cohort level."
+}
+
+SELECT
+  level_id,
+  cohort_level,
+  size,
+  mask,
+  included_modalities,
+  n AS n_patients_rep,
+  pct_of_cohort,
+  n_died_1y,
+  n_alive_1y,
+  mortality_1y_pct
+FROM ${ref("t_coverage")}
+WHERE definition = 'repeat'

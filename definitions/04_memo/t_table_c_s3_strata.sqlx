@@ -1,0 +1,92 @@
+config {
+  type: "table",
+  tags: ["memo"],
+  description: "Table C-S3: age x sex x BMI strata x modality coverage (baseline window), per cohort level, with the swap-readiness grade. Age: 18-64 / 65-74 young-old / 75-84 middle-old / >=85 oldest-old. BMI: US CDC adult categories + Missing."
+}
+
+WITH
+pt AS (
+  SELECT
+    level_id, cohort_level, stay_id, died_1y,
+    has_vitals, has_labs, has_ecg, has_notes, has_cxr, has_all5,
+    CASE WHEN age < 65 THEN 1 WHEN age < 75 THEN 2 WHEN age < 85 THEN 3 ELSE 4 END AS age_ord,
+    CASE sex WHEN 'F' THEN 1 WHEN 'M' THEN 2 ELSE 3 END AS sex_ord,
+    CASE WHEN bmi IS NULL THEN 5 WHEN bmi < 18.5 THEN 1 WHEN bmi < 25 THEN 2
+         WHEN bmi < 30 THEN 3 ELSE 4 END AS bmi_ord
+  FROM ${ref("s_level_stay")}
+  WHERE age >= 18
+),
+lvl AS (SELECT DISTINCT level_id, cohort_level FROM ${ref("c_cohort")}),
+age_lv AS (SELECT * FROM UNNEST([
+  STRUCT(1 AS age_ord, '18-64' AS age_group, 'Adult <65' AS age_label),
+        (2, '65-74', 'Young-old'),
+        (3, '75-84', 'Middle-old'),
+        (4, '>=85',  'Oldest-old')])),
+sex_lv AS (SELECT * FROM UNNEST([STRUCT(1 AS sex_ord, 'Female' AS sex), (2, 'Male')])),
+bmi_lv AS (SELECT * FROM UNNEST([
+  STRUCT(1 AS bmi_ord, 'Underweight' AS bmi_cat), (2, 'Healthy weight'), (3, 'Overweight'),
+        (4, 'Obesity'), (5, 'Missing')])),
+grid AS (
+  SELECT lv.level_id, lv.cohort_level,
+         a.age_ord, a.age_group, a.age_label, s.sex_ord, s.sex, b.bmi_ord, b.bmi_cat
+  FROM lvl lv CROSS JOIN age_lv a CROSS JOIN sex_lv s CROSS JOIN bmi_lv b
+),
+agg AS (
+  SELECT
+    level_id, age_ord, sex_ord, bmi_ord,
+    COUNT(*)                          AS idx_n,
+    COUNTIF(died_1y)                  AS idx_died,
+    COUNTIF(has_vitals)               AS vitals_n, COUNTIF(has_vitals AND died_1y) AS vitals_died,
+    COUNTIF(has_labs)                 AS labs_n,   COUNTIF(has_labs   AND died_1y) AS labs_died,
+    COUNTIF(has_ecg)                  AS ecg_n,    COUNTIF(has_ecg    AND died_1y) AS ecg_died,
+    COUNTIF(has_notes)                AS notes_n,  COUNTIF(has_notes  AND died_1y) AS notes_died,
+    COUNTIF(has_cxr)                  AS cxr_n,    COUNTIF(has_cxr    AND died_1y) AS cxr_died,
+    COUNTIF(has_all5)                 AS all5_n,
+    COUNTIF(has_all5 AND died_1y)     AS all5_died,
+    COUNTIF(has_all5 AND NOT died_1y) AS all5_alive
+  FROM pt
+  GROUP BY level_id, age_ord, sex_ord, bmi_ord
+)
+SELECT
+  g.level_id,
+  g.cohort_level,
+  g.age_ord, g.sex_ord, g.bmi_ord,
+  CONCAT(g.age_group, ' | ', g.sex, ' | ', g.bmi_cat) AS stratum,
+  g.age_group, g.age_label, g.sex, g.bmi_cat,
+
+  COALESCE(a.idx_n, 0)    AS idx_n,
+  COALESCE(a.idx_died, 0) AS idx_died,
+  ROUND(100 * SAFE_DIVIDE(a.idx_died, a.idx_n), 1) AS idx_mort_1y_pct,
+
+  COALESCE(a.vitals_n, 0) AS vitals_n, COALESCE(a.vitals_died, 0) AS vitals_died,
+  COALESCE(a.labs_n, 0)   AS labs_n,   COALESCE(a.labs_died, 0)   AS labs_died,
+  COALESCE(a.ecg_n, 0)    AS ecg_n,    COALESCE(a.ecg_died, 0)    AS ecg_died,
+  COALESCE(a.notes_n, 0)  AS notes_n,  COALESCE(a.notes_died, 0)  AS notes_died,
+  COALESCE(a.cxr_n, 0)    AS cxr_n,    COALESCE(a.cxr_died, 0)    AS cxr_died,
+
+  ROUND(100 * SAFE_DIVIDE(a.vitals_n, a.idx_n), 1) AS vitals_pct,
+  ROUND(100 * SAFE_DIVIDE(a.labs_n,   a.idx_n), 1) AS labs_pct,
+  ROUND(100 * SAFE_DIVIDE(a.ecg_n,    a.idx_n), 1) AS ecg_pct,
+  ROUND(100 * SAFE_DIVIDE(a.notes_n,  a.idx_n), 1) AS notes_pct,
+  ROUND(100 * SAFE_DIVIDE(a.cxr_n,    a.idx_n), 1) AS cxr_pct,
+
+  COALESCE(a.all5_n, 0)     AS all5_n,
+  COALESCE(a.all5_died, 0)  AS all5_died,
+  COALESCE(a.all5_alive, 0) AS all5_alive,
+  ROUND(100 * SAFE_DIVIDE(a.all5_n, a.idx_n), 1)     AS all5_pct,
+  ROUND(100 * SAFE_DIVIDE(a.all5_died, a.all5_n), 1) AS all5_mort_1y_pct,
+
+  (COALESCE(a.all5_died, 0) >= 2 AND COALESCE(a.all5_alive, 0) >= 2) AS same_outcome_feasible,
+  (COALESCE(a.all5_died, 0) >= 1 AND COALESCE(a.all5_alive, 0) >= 1) AS opposite_outcome_feasible,
+  ROUND(SAFE_DIVIDE(a.all5_alive, a.all5_died), 1) AS alive_per_died_donor,
+  CASE
+    WHEN COALESCE(a.all5_n, 0) = 0 THEN '0 - empty'
+    WHEN COALESCE(a.all5_died, 0) = 0 OR COALESCE(a.all5_alive, 0) = 0 THEN '1 - one outcome only'
+    WHEN a.all5_died < 3 OR a.all5_alive < 3 THEN '2 - sparse (<3 of an outcome)'
+    WHEN a.all5_died < 5 THEN '3 - usable, heavy donor reuse'
+    ELSE '4 - adequate'
+  END AS swap_readiness
+FROM grid g
+LEFT JOIN agg a
+  ON  a.level_id = g.level_id
+  AND a.age_ord = g.age_ord AND a.sex_ord = g.sex_ord AND a.bmi_ord = g.bmi_ord

@@ -1,0 +1,18 @@
+config {
+  type: "table",
+  tags: ["memo"],
+  description: "All 32 modality combinations as bitmasks. in_table_c = the Table C layout (5-, 4-, 3-way intersections, singles and the denominator; no 2-way rows)."
+}
+
+SELECT
+  mask,
+  BIT_COUNT(mask) AS size,
+  IF(mask = 0, 'Cohort (denominator)',
+     ARRAY_TO_STRING(ARRAY(
+       SELECT m.label
+       FROM UNNEST([${constants.MODALITIES.map((m) => `STRUCT(${m.bit} AS bit, '${m.label}' AS label)`).join(", ")}]) AS m
+       WHERE (mask & m.bit) > 0
+       ORDER BY m.bit
+     ), ', ')) AS included_modalities,
+  (BIT_COUNT(mask) != 2) AS in_table_c
+FROM UNNEST(GENERATE_ARRAY(0, ${constants.ALL_MODALITIES_MASK})) AS mask

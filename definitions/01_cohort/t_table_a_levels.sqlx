@@ -1,0 +1,19 @@
+config {
+  type: "table",
+  tags: ["cohort", "memo"],
+  description: "Size and overlap of the three cohort levels."
+}
+
+WITH c AS (SELECT * FROM ${ref("c_cohort")})
+SELECT 1 AS row_id, 'L1_CCU_HF_ICD_primary' AS metric, COUNTIF(level_id = 'L1') AS count_val FROM c UNION ALL
+SELECT 2, 'L2_CCU_no_HF_ICD',              COUNTIF(level_id = 'L2') FROM c UNION ALL
+SELECT 3, 'L3_CCU_CVICU_no_HF_ICD',        COUNTIF(level_id = 'L3') FROM c UNION ALL
+SELECT 4, 'L2_index_stays_with_HF_ICD',    COUNTIF(level_id = 'L2' AND flag_hf) FROM c UNION ALL
+SELECT 5, 'L3_index_stays_with_HF_ICD',    COUNTIF(level_id = 'L3' AND flag_hf) FROM c UNION ALL
+SELECT 6, 'L3_index_stays_in_CVICU',       COUNTIF(level_id = 'L3' AND flag_cvicu) FROM c UNION ALL
+SELECT 7, 'L1_patients_anchored_to_a_different_stay_in_L2', COUNT(*)
+  FROM c a JOIN c b ON b.subject_id = a.subject_id
+  WHERE a.level_id = 'L1' AND b.level_id = 'L2' AND a.stay_id != b.stay_id UNION ALL
+SELECT 8, 'L2_patients_anchored_to_a_different_stay_in_L3', COUNT(*)
+  FROM c a JOIN c b ON b.subject_id = a.subject_id
+  WHERE a.level_id = 'L2' AND b.level_id = 'L3' AND a.stay_id != b.stay_id

@@ -1,0 +1,20 @@
+config {
+  type: "view",
+  tags: ["memo"],
+  description: "Extraction size per modality and cohort level: rows, baseline rows, and stays with >= 1 record (baseline window and whole span)."
+}
+
+WITH recs AS (
+  ${constants.MODALITIES.map((m) => `SELECT '${m.label}' AS modality, ${m.bit} AS bit, stay_id, phase FROM ${ref("x_" + m.key)}`).join("\n  UNION ALL\n  ")}
+)
+SELECT
+  c.level_id,
+  c.cohort_level,
+  r.modality,
+  COUNT(*)                                                AS n_rows,
+  COUNTIF(r.phase = 'baseline')                           AS n_rows_baseline,
+  COUNT(DISTINCT IF(r.phase = 'baseline', r.stay_id, NULL)) AS stays_with_baseline_record,
+  COUNT(DISTINCT r.stay_id)                               AS stays_with_any_record
+FROM recs r
+JOIN ${ref("c_cohort")} c USING (stay_id)
+GROUP BY c.level_id, c.cohort_level, r.modality, r.bit

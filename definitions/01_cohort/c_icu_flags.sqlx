@@ -1,0 +1,115 @@
+config {
+  type: "table",
+  tags: ["cohort"],
+  description: "One row per ICU stay with every eligibility flag and the HF-rung flags. Everything downstream selects from this.",
+  assertions: {
+    uniqueKey: ["stay_id"]
+  }
+}
+
+WITH
+age_flagged AS (
+  SELECT stay_id, (admission_age >= 18) AS flag_age
+  FROM ${ref("icustay_detail")}
+),
+unit_flagged AS (
+  SELECT
+    stay_id, hadm_id, subject_id, first_careunit, intime, outtime, los,
+    (first_careunit = '${constants.CCU}')   AS flag_ccu,
+    (first_careunit = '${constants.CVICU}') AS flag_cvicu,
+    (los >= 1.0)                            AS flag_los
+  FROM ${ref("icustays")}
+),
+-- HF: any diagnosis position, ICD-9 428.x / ICD-10 I50.x (acute AND chronic codes)
+hf_flagged AS (
+  SELECT DISTINCT hadm_id, TRUE AS flag_hf
+  FROM ${ref("diagnoses_icd")}
+  WHERE (icd_version = 9  AND icd_code LIKE '428%')
+     OR (icd_version = 10 AND icd_code LIKE 'I50%')
+),
+death_info AS (
+  SELECT icu.stay_id, adm.deathtime, icu.intime
+  FROM ${ref("icustays")} icu
+  LEFT JOIN ${ref("admissions")} adm ON adm.hadm_id = icu.hadm_id
+),
+cmo_flagged AS (
+  SELECT DISTINCT ce.stay_id, TRUE AS flag_cmo_24h
+  FROM ${ref("chartevents")} ce
+  JOIN ${ref("icustays")} icu ON ce.stay_id = icu.stay_id
+  WHERE (
+      (ce.itemid IN (223758, 228687) AND LOWER(ce.value) LIKE '%comfort%')
+      OR (ce.itemid = 220001 AND ce.value = 'Comfort care (CMO, Comfort Measures)')
+      OR (ce.itemid IN (228297, 223780, 224740) AND ce.value = 'CMO')
+    )
+    AND ce.charttime >= icu.intime
+    AND ce.charttime <= DATETIME_ADD(icu.intime, INTERVAL 24 HOUR)
+),
+-- itemid 50963 = NT-proBNP (not BNP); threshold > 125 pg/mL
+bnp_flagged AS (
+  SELECT DISTINCT icu.stay_id, TRUE AS flag_bnp_24h
+  FROM ${ref("icustays")} icu
+  JOIN ${ref("labevents")} le ON le.hadm_id = icu.hadm_id
+  WHERE le.itemid IN (50963) AND le.valuenum > 125
+    AND le.charttime >= DATETIME_SUB(icu.intime, INTERVAL 24 HOUR)
+    AND le.charttime <  DATETIME_ADD(icu.intime, INTERVAL 24 HOUR)
+),
+diuretic_flagged AS (
+  SELECT DISTINCT icu.stay_id, TRUE AS flag_diur_24h
+  FROM ${ref("icustays")} icu
+  JOIN ${ref("emar")} emar ON emar.hadm_id = icu.hadm_id
+  JOIN ${ref("pharmacy")} pharm ON emar.pharmacy_id = pharm.pharmacy_id
+  WHERE (
+      LOWER(pharm.medication) LIKE '%furosemide%' OR LOWER(pharm.medication) LIKE '%bumetanide%'
+      OR LOWER(pharm.medication) LIKE '%torsemide%' OR LOWER(pharm.medication) LIKE '%ethacrynic acid%'
+      OR LOWER(pharm.medication) LIKE '%lasix%'
+    )
+    AND LOWER(pharm.route) LIKE '%iv%'
+    AND emar.charttime >= icu.intime
+    AND emar.charttime <= DATETIME_ADD(icu.intime, INTERVAL 24 HOUR)
+),
+vasoactive_flagged AS (
+  SELECT DISTINCT icu.stay_id, TRUE AS flag_vaso_24h
+  FROM ${ref("icustays")} icu
+  JOIN ${ref("emar")} emar ON emar.hadm_id = icu.hadm_id
+  JOIN ${ref("pharmacy")} pharm ON emar.pharmacy_id = pharm.pharmacy_id
+  WHERE (
+      LOWER(pharm.medication) LIKE '%dobutamine%' OR LOWER(pharm.medication) LIKE '%dopamine%'
+      OR LOWER(pharm.medication) LIKE '%epinephrine%' OR LOWER(pharm.medication) LIKE '%norepinephrine%'
+      OR LOWER(pharm.medication) LIKE '%milrinone%' OR LOWER(pharm.medication) LIKE '%vasopressin%'
+      OR LOWER(pharm.medication) LIKE '%phenylephrine%'
+    )
+    AND LOWER(pharm.medication) NOT LIKE '%nasal%'
+    AND LOWER(pharm.medication) NOT LIKE '%ophth%'
+    AND LOWER(pharm.medication) NOT LIKE '%lidocaine%'
+    AND emar.charttime >= icu.intime
+    AND emar.charttime <= DATETIME_ADD(icu.intime, INTERVAL 24 HOUR)
+),
+echo_ef_flagged AS (
+  SELECT DISTINCT hadm_id, TRUE AS flag_echo_ef
+  FROM ${ref("radiology")}
+  WHERE REGEXP_CONTAINS(LOWER(text), 'ejection fraction')
+)
+SELECT
+  c.stay_id, c.hadm_id, c.subject_id, c.first_careunit, c.intime, c.outtime, c.los,
+  COALESCE(a.flag_age, FALSE) AS flag_age,
+  c.flag_ccu,
+  c.flag_cvicu,
+  COALESCE(h.flag_hf, FALSE)  AS flag_hf,
+  c.flag_los,
+  (d.deathtime IS NOT NULL
+   AND d.deathtime >= d.intime
+   AND d.deathtime <  DATETIME_ADD(d.intime, INTERVAL 24 HOUR)) AS flag_died_before_24h,
+  COALESCE(cmo.flag_cmo_24h, FALSE)   AS flag_cmo_24h,
+  COALESCE(bnp.flag_bnp_24h, FALSE)   AS flag_bnp_24h,
+  COALESCE(diur.flag_diur_24h, FALSE) AS flag_diur_24h,
+  COALESCE(vaso.flag_vaso_24h, FALSE) AS flag_vaso_24h,
+  COALESCE(echo.flag_echo_ef, FALSE)  AS flag_echo_ef
+FROM unit_flagged c
+LEFT JOIN age_flagged        a    ON a.stay_id    = c.stay_id
+LEFT JOIN hf_flagged         h    ON h.hadm_id    = c.hadm_id
+LEFT JOIN death_info         d    ON d.stay_id    = c.stay_id
+LEFT JOIN cmo_flagged        cmo  ON cmo.stay_id  = c.stay_id
+LEFT JOIN bnp_flagged        bnp  ON bnp.stay_id  = c.stay_id
+LEFT JOIN diuretic_flagged   diur ON diur.stay_id = c.stay_id
+LEFT JOIN vasoactive_flagged vaso ON vaso.stay_id = c.stay_id
+LEFT JOIN echo_ef_flagged    echo ON echo.hadm_id = c.hadm_id
