@@ -1,0 +1,21 @@
+config {
+  type: "table",
+  tags: ["cohort", "memo"],
+  description: "Table A: CONSORT attrition for the primary cohort (L1) and the HF definition rungs. Cohort selection only; no modality criteria."
+}
+
+WITH
+f AS (SELECT * FROM ${ref("c_icu_flags")}),
+l1 AS (SELECT * FROM ${ref("c_cohort")} WHERE level_id = 'L1')
+SELECT 1 AS row_id, 'Total_ICU_Stays' AS metric, COUNT(*) AS count_val FROM f UNION ALL
+SELECT 2,  'Inclusion_Age_GE_18',                    COUNTIF(flag_age) FROM f UNION ALL
+SELECT 3,  'Inclusion_First_Careunit_CCU',           COUNTIF(flag_age AND flag_ccu) FROM f UNION ALL
+SELECT 4,  'Inclusion_HF_ICD_AnyPosition_428_I50',   COUNTIF(flag_age AND flag_ccu AND flag_hf) FROM f UNION ALL
+SELECT 5,  'Inclusion_ICU_LOS_GE_24h',               COUNTIF(flag_age AND flag_ccu AND flag_hf AND flag_los) FROM f UNION ALL
+SELECT 6,  'Exclusion_Death_Within_24h_of_ICU_Admit', COUNTIF(flag_age AND flag_ccu AND flag_hf AND flag_los AND flag_died_before_24h) FROM f UNION ALL
+SELECT 7,  'CMO_First_24h_Report_Only_Not_Excluded', COUNTIF(flag_age AND flag_ccu AND flag_hf AND flag_los AND NOT flag_died_before_24h AND flag_cmo_24h) FROM f UNION ALL
+SELECT 8,  'Index_Cohort_First_Eligible_Stay_Per_Patient', COUNT(*) FROM l1 UNION ALL
+SELECT 9,  'Rung_1_HF_ICD_Alone',                    COUNT(*) FROM l1 UNION ALL
+SELECT 10, 'Rung_2_HF_ICD_plus_NTproBNP_gt125_pm24h', COUNTIF(flag_bnp_24h) FROM l1 UNION ALL
+SELECT 11, 'Rung_3_HF_ICD_plus_IV_Diuretic_or_Vasoactive_0to24h', COUNTIF(flag_diur_24h OR flag_vaso_24h) FROM l1 UNION ALL
+SELECT 12, 'Rung_4_HF_ICD_plus_Radiology_Note_Mentions_EF', COUNTIF(flag_echo_ef) FROM l1

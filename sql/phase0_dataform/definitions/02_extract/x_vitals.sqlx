@@ -1,0 +1,32 @@
+config {
+  type: "table",
+  tags: ["extract"],
+  description: "Charted vital signs (icu.chartevents, d_items category 'Routine Vital Signs') for every extraction stay, over [w_start, span_end). Matched by subject_id + time, so vitals from any ICU stay of the patient count. mimiciv_ed is not used, so ED vitals are not included. Unit for counting = distinct charttime.",
+  bigquery: {
+    clusterBy: ["stay_id", "phase"]
+  }
+}
+
+WITH vital_items AS (
+  SELECT itemid, label
+  FROM ${ref("d_items")}
+  WHERE category = 'Routine Vital Signs'
+)
+SELECT
+  ${constants.extractKeys("xs")},
+  ${constants.phase("ce.charttime", "xs")} AS phase,
+  ce.stay_id AS source_stay_id,
+  ce.charttime,
+  ${constants.hoursFrom("ce.charttime", "xs.intime")} AS hours_from_icu_admit,
+  ce.itemid,
+  vi.label,
+  ce.value,
+  ce.valuenum,
+  ce.valueuom
+FROM ${ref("x_stays")} xs
+JOIN ${ref("chartevents")} ce
+  ON ce.subject_id = xs.subject_id
+ AND ${constants.inSpan("ce.charttime", "xs")}
+JOIN vital_items vi
+  ON vi.itemid = ce.itemid
+WHERE ce.value IS NOT NULL

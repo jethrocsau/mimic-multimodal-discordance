@@ -1,0 +1,110 @@
+config {
+  type: "table",
+  tags: ["stay"],
+  description: "One row per extraction stay: record counts per modality and phase (all derived from the x_* tables), modality bitmasks, 1-year mortality and demographics. base_mask / rep_mask: bit 1 = Vitals, 2 = Labs, 4 = ECG, 8 = Notes, 16 = CXR.",
+  columns: {
+    base_mask: "Modalities with >= 1 record in the baseline window [w_start, w_end)",
+    rep_mask: "Modalities with >= 1 baseline record AND >= 1 follow-up record [w_end, f_end)",
+    died_1y: "Death (patients.dod, else admissions.deathtime of the index admission) within 365 days of ICU admission",
+    days_to_death: "Days from ICU admission date to death date; NULL if no recorded death"
+  },
+  assertions: {
+    uniqueKey: ["stay_id"],
+    nonNull: ["stay_id", "died_1y", "base_mask", "rep_mask"]
+  }
+}
+
+WITH
+v AS (
+  SELECT stay_id,
+    COUNT(DISTINCT IF(phase = 'baseline',  charttime, NULL)) AS n_base,
+    COUNT(DISTINCT IF(phase = 'follow_up', charttime, NULL)) AS n_follow
+  FROM ${ref("x_vitals")} GROUP BY stay_id
+),
+l AS (
+  SELECT stay_id,
+    COUNT(DISTINCT IF(phase = 'baseline',  specimen_id, NULL)) AS n_base,
+    COUNT(DISTINCT IF(phase = 'follow_up', specimen_id, NULL)) AS n_follow
+  FROM ${ref("x_labs")} GROUP BY stay_id
+),
+e AS (
+  SELECT stay_id,
+    COUNT(DISTINCT IF(phase = 'baseline',  study_id, NULL)) AS n_base,
+    COUNT(DISTINCT IF(phase = 'follow_up', study_id, NULL)) AS n_follow
+  FROM ${ref("x_ecg")} GROUP BY stay_id
+),
+n AS (
+  SELECT stay_id,
+    COUNT(DISTINCT IF(phase = 'baseline',  note_id, NULL)) AS n_base,
+    COUNT(DISTINCT IF(phase = 'follow_up', note_id, NULL)) AS n_follow
+  FROM ${ref("x_notes")} GROUP BY stay_id
+),
+c AS (
+  SELECT stay_id,
+    COUNT(DISTINCT IF(phase = 'baseline',  study_id, NULL)) AS n_base,
+    COUNT(DISTINCT IF(phase = 'follow_up', study_id, NULL)) AS n_follow
+  FROM ${ref("x_cxr")} GROUP BY stay_id
+),
+demo AS (
+  SELECT xs.stay_id, CAST(d.admission_age AS FLOAT64) AS age, p.gender AS sex, p.anchor_year_group
+  FROM ${ref("x_stays")} xs
+  JOIN ${ref("icustay_detail")} d ON d.stay_id = xs.stay_id
+  JOIN ${ref("patients")} p ON p.subject_id = xs.subject_id
+),
+-- BMI: omr value closest to ICU admission, from 365 days before to 30 days after
+bmi AS (
+  SELECT stay_id, bmi FROM (
+    SELECT
+      xs.stay_id,
+      SAFE_CAST(o.result_value AS FLOAT64) AS bmi,
+      ROW_NUMBER() OVER (
+        PARTITION BY xs.stay_id
+        ORDER BY ABS(DATE_DIFF(o.chartdate, CAST(xs.intime AS DATE), DAY)),
+                 DATE_DIFF(o.chartdate, CAST(xs.intime AS DATE), DAY)
+      ) AS rn
+    FROM ${ref("x_stays")} xs
+    JOIN ${ref("omr")} o ON o.subject_id = xs.subject_id
+    WHERE o.result_name LIKE 'BMI%'
+      AND DATE_DIFF(o.chartdate, CAST(xs.intime AS DATE), DAY) BETWEEN -365 AND 30
+      AND SAFE_CAST(o.result_value AS FLOAT64) BETWEEN 10 AND 80
+  )
+  WHERE rn = 1
+),
+mort AS (
+  SELECT xs.stay_id, COALESCE(CAST(p.dod AS DATE), CAST(xs.deathtime AS DATE)) AS death_date
+  FROM ${ref("x_stays")} xs
+  JOIN ${ref("patients")} p ON p.subject_id = xs.subject_id
+),
+counts AS (
+  SELECT
+    xs.stay_id, xs.subject_id, xs.hadm_id, xs.first_careunit, xs.flag_hf,
+    xs.intime, xs.outtime, xs.deathtime,
+    xs.w_start, xs.w_end, xs.f_end, xs.has_follow_window,
+    ROUND(GREATEST(0, DATETIME_DIFF(xs.f_end, xs.w_end, MINUTE)) / 60.0, 1) AS follow_hours,
+    COALESCE(v.n_base, 0) AS n_vitals_base, COALESCE(v.n_follow, 0) AS n_vitals_follow,
+    COALESCE(l.n_base, 0) AS n_labs_base,   COALESCE(l.n_follow, 0) AS n_labs_follow,
+    COALESCE(e.n_base, 0) AS n_ecg_base,    COALESCE(e.n_follow, 0) AS n_ecg_follow,
+    COALESCE(n.n_base, 0) AS n_notes_base,  COALESCE(n.n_follow, 0) AS n_notes_follow,
+    COALESCE(c.n_base, 0) AS n_cxr_base,    COALESCE(c.n_follow, 0) AS n_cxr_follow
+  FROM ${ref("x_stays")} xs
+  LEFT JOIN v USING (stay_id)
+  LEFT JOIN l USING (stay_id)
+  LEFT JOIN e USING (stay_id)
+  LEFT JOIN n USING (stay_id)
+  LEFT JOIN c USING (stay_id)
+)
+SELECT
+  k.*,
+  ${constants.mask((m) => `k.n_${m}_base > 0`)} AS base_mask,
+  ${constants.mask((m) => `k.n_${m}_base > 0 AND k.n_${m}_follow > 0`)} AS rep_mask,
+  (mo.death_date IS NOT NULL
+   AND mo.death_date <= DATE_ADD(CAST(k.intime AS DATE), INTERVAL 365 DAY)) AS died_1y,
+  DATE_DIFF(mo.death_date, CAST(k.intime AS DATE), DAY) AS days_to_death,
+  dm.age,
+  dm.sex,
+  dm.anchor_year_group,
+  b.bmi
+FROM counts k
+LEFT JOIN mort mo ON mo.stay_id = k.stay_id
+LEFT JOIN demo dm ON dm.stay_id = k.stay_id
+LEFT JOIN bmi  b  ON b.stay_id  = k.stay_id

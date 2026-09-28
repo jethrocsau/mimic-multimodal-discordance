@@ -1,0 +1,16 @@
+config {
+  type: "assertion",
+  tags: ["checks"],
+  description: "The levels are nested by patient: every L1 patient is in L2, and every L2 patient is in L3. Returns the patients that break this."
+}
+
+WITH c AS (SELECT level_id, subject_id FROM ${ref("c_cohort")})
+SELECT 'L1 patient missing from L2' AS problem, a.subject_id
+FROM c a
+LEFT JOIN c b ON b.subject_id = a.subject_id AND b.level_id = 'L2'
+WHERE a.level_id = 'L1' AND b.subject_id IS NULL
+UNION ALL
+SELECT 'L2 patient missing from L3', a.subject_id
+FROM c a
+LEFT JOIN c b ON b.subject_id = a.subject_id AND b.level_id = 'L3'
+WHERE a.level_id = 'L2' AND b.subject_id IS NULL

@@ -1,0 +1,35 @@
+config {
+  type: "table",
+  tags: ["extract"],
+  description: "Radiology reports (mimiciv_note.radiology) for every extraction stay, over [w_start, span_end). Notes modality = radiology reports only. exam_name comes from radiology_detail; is_chest_radiograph_report marks reports that describe a chest film (the same exam as a CXR image). Unit for counting = distinct note_id.",
+  bigquery: {
+    clusterBy: ["stay_id", "phase"]
+  }
+}
+
+WITH exam AS (
+  SELECT note_id, ARRAY_AGG(DISTINCT field_value IGNORE NULLS) AS exam_names
+  FROM ${ref("radiology_detail")}
+  WHERE field_name = 'exam_name'
+  GROUP BY note_id
+)
+SELECT
+  ${constants.extractKeys("xs")},
+  ${constants.phase("r.charttime", "xs")} AS phase,
+  r.note_id,
+  r.note_type,
+  r.charttime,
+  ${constants.hoursFrom("r.charttime", "xs.intime")} AS hours_from_icu_admit,
+  ARRAY_TO_STRING(x.exam_names, ' | ') AS exam_name,
+  EXISTS (
+    SELECT 1 FROM UNNEST(x.exam_names) AS nm
+    WHERE (STARTS_WITH(UPPER(nm), 'CHEST') OR UPPER(nm) LIKE '%PORT CHEST%')
+      AND UPPER(nm) NOT LIKE '%FLUORO%'
+  ) AS is_chest_radiograph_report,
+  r.text
+FROM ${ref("x_stays")} xs
+JOIN ${ref("radiology")} r
+  ON r.subject_id = xs.subject_id
+ AND ${constants.inSpan("r.charttime", "xs")}
+LEFT JOIN exam x
+  ON x.note_id = r.note_id

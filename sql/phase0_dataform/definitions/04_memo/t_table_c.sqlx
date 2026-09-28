@@ -1,0 +1,22 @@
+config {
+  type: "view",
+  tags: ["memo"],
+  description: "Table C (with the C-S1 mortality columns): modality availability and intersections in the baseline window, per cohort level. Inclusive supersets: a row counts every stay that has at least the listed modalities."
+}
+
+SELECT
+  level_id,
+  cohort_level,
+  size,
+  mask,
+  included_modalities,
+  n AS patient_count,
+  pct_of_cohort,
+  n_died_1y,
+  n_alive_1y,
+  mortality_1y_pct,
+  pct_of_died_stratum,
+  pct_of_alive_stratum
+FROM ${ref("t_coverage")}
+WHERE definition = 'baseline'
+  AND in_table_c

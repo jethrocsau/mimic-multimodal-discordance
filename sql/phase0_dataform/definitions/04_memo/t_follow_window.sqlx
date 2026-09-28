@@ -1,0 +1,20 @@
+config {
+  type: "view",
+  tags: ["memo"],
+  description: "Follow-up window length by 1-year outcome, per cohort level. Shorter follow-up = fewer chances of a repeat record; read alongside C-2 / C-S4."
+}
+
+SELECT
+  level_id,
+  cohort_level,
+  IF(died_1y, 'Died within 1y', 'Alive at 1y') AS outcome_1y,
+  COUNT(*)                        AS n,
+  COUNTIF(deathtime IS NOT NULL)  AS n_in_hospital_death,
+  COUNTIF(NOT has_follow_window)  AS n_no_follow_window,
+  APPROX_QUANTILES(follow_hours, 100)[OFFSET(5)]  AS follow_h_p05,
+  APPROX_QUANTILES(follow_hours, 100)[OFFSET(25)] AS follow_h_p25,
+  APPROX_QUANTILES(follow_hours, 100)[OFFSET(50)] AS follow_h_median,
+  APPROX_QUANTILES(follow_hours, 100)[OFFSET(75)] AS follow_h_p75,
+  APPROX_QUANTILES(follow_hours, 100)[OFFSET(95)] AS follow_h_p95
+FROM ${ref("s_level_stay")}
+GROUP BY level_id, cohort_level, outcome_1y

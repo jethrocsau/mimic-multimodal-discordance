@@ -1,0 +1,27 @@
+config {
+  type: "assertion",
+  tags: ["checks"],
+  description: "Every cohort-level stay has a stay summary, and every level's coverage denominator equals its cohort size. Returns the mismatches."
+}
+
+WITH
+sizes AS (
+  SELECT level_id, COUNT(*) AS n_cohort
+  FROM ${ref("c_cohort")}
+  GROUP BY level_id
+),
+denoms AS (
+  SELECT level_id, definition, n AS n_denominator
+  FROM ${ref("t_coverage")}
+  WHERE mask = 0
+)
+SELECT 'stay missing from s_stay_summary' AS problem, c.level_id, CAST(c.stay_id AS STRING) AS detail
+FROM ${ref("c_cohort")} c
+LEFT JOIN ${ref("s_stay_summary")} s USING (stay_id)
+WHERE s.stay_id IS NULL
+UNION ALL
+SELECT 'coverage denominator != cohort size', d.level_id,
+       CONCAT(d.definition, ': ', CAST(d.n_denominator AS STRING), ' vs ', CAST(s.n_cohort AS STRING))
+FROM denoms d
+JOIN sizes s USING (level_id)
+WHERE d.n_denominator != s.n_cohort

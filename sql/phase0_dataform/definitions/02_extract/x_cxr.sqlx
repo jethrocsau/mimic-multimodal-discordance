@@ -1,0 +1,23 @@
+config {
+  type: "table",
+  tags: ["extract"],
+  description: "Chest radiograph images (MIMIC-CXR-JPG) for every extraction stay, over [w_start, span_end). One row per image; a PA + lateral pair shares a study_id. Unit for counting = distinct study_id. Use jpg_path to download only the images you need.",
+  bigquery: {
+    clusterBy: ["stay_id", "phase"]
+  }
+}
+
+SELECT
+  ${constants.extractKeys("xs")},
+  ${constants.phase("m.study_dt", "xs")} AS phase,
+  m.study_id,
+  m.dicom_id,
+  m.ViewPosition,
+  m.procedure_description,
+  m.study_dt,
+  ${constants.hoursFrom("m.study_dt", "xs.intime")} AS hours_from_icu_admit,
+  m.jpg_path
+FROM ${ref("x_stays")} xs
+JOIN ${ref("x_cxr_meta")} m
+  ON m.subject_id = xs.subject_id
+ AND ${constants.inSpan("m.study_dt", "xs")}

@@ -1,0 +1,21 @@
+config {
+  type: "table",
+  tags: ["extract"],
+  description: "12-lead ECGs (MIMIC-IV-ECG record_list) for every extraction stay, over [w_start, span_end). Every record is a 10-second 12-lead diagnostic ECG. `path` is the waveform record path inside MIMIC-IV-ECG. Unit for counting = distinct study_id.",
+  bigquery: {
+    clusterBy: ["stay_id", "phase"]
+  }
+}
+
+SELECT
+  ${constants.extractKeys("xs")},
+  ${constants.phase("e.ecg_time", "xs")} AS phase,
+  e.study_id,
+  e.file_name,
+  e.path,
+  e.ecg_time,
+  ${constants.hoursFrom("e.ecg_time", "xs.intime")} AS hours_from_icu_admit
+FROM ${ref("x_stays")} xs
+JOIN ${ref("record_list")} e
+  ON e.subject_id = xs.subject_id
+ AND ${constants.inSpan("e.ecg_time", "xs")}

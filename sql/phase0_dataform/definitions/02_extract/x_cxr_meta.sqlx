@@ -1,0 +1,20 @@
+config {
+  type: "view",
+  tags: ["extract"],
+  description: "MIMIC-CXR-JPG image metadata with the study datetime rebuilt from StudyDate + StudyTime. One row per image (dicom_id). jpg_path is the file path inside MIMIC-CXR-JPG."
+}
+
+SELECT
+  dicom_id,
+  subject_id,
+  study_id,
+  ViewPosition,
+  PerformedProcedureStepDescription AS procedure_description,
+  StudyDate,
+  StudyTime,
+  ${constants.cxrStudyDt("StudyDate", "StudyTime")} AS study_dt,
+  CONCAT('files/p', SUBSTR(CAST(subject_id AS STRING), 1, 2),
+         '/p', CAST(subject_id AS STRING),
+         '/s', CAST(study_id AS STRING),
+         '/', dicom_id, '.jpg') AS jpg_path
+FROM ${ref("metadata")}

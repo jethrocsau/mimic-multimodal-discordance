@@ -1,0 +1,14 @@
+defaultProject: YOUR_GCP_PROJECT          # project where the output tables are written
+defaultLocation: US                        # physionet-data lives in the US multi-region
+defaultDataset: phase0                     # output dataset for all tables and views
+defaultAssertionDataset: phase0_assertions
+dataformCoreVersion: 3.0.0
+
+vars:
+  pre_h: "72"          # modality window start = ICU intime - pre_h hours
+  post_h: "72"         # modality window end   = ICU intime + post_h hours (exclusive)
+  follow_tail_h: "24"  # follow-up ends at LEAST(ICU outtime, in-hospital deathtime) + follow_tail_h hours
+  # PhysioNet dataset versions used to build download paths in x_file_manifest
+  cxr_jpg_version: "2.1.0"   # https://physionet.org/files/mimic-cxr-jpg/<version>/
+  cxr_version: "2.1.0"       # https://physionet.org/files/mimic-cxr/<version>/   (DICOM + report .txt)
+  ecg_version: "1.0"         # https://physionet.org/files/mimic-iv-ecg/<version>/

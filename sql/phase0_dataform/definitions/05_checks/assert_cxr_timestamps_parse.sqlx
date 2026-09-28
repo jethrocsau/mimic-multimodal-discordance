@@ -1,0 +1,9 @@
+config {
+  type: "assertion",
+  tags: ["checks"],
+  description: "MIMIC-CXR-JPG images whose StudyDate/StudyTime could not be parsed. SAFE.PARSE_DATETIME returns NULL on failure, which would silently drop the image from every window; this makes that visible."
+}
+
+SELECT dicom_id, subject_id, study_id, StudyDate, StudyTime
+FROM ${ref("x_cxr_meta")}
+WHERE study_dt IS NULL

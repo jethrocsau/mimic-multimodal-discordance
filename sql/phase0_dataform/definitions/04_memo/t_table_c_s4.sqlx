@@ -1,0 +1,42 @@
+config {
+  type: "view",
+  tags: ["memo"],
+  description: "Table C-S4: baseline vs repeat coverage side by side, Table C layout, with attrition and 1-year mortality, per cohort level."
+}
+
+SELECT
+  b.level_id,
+  b.cohort_level,
+  b.size,
+  b.mask,
+  b.included_modalities,
+
+  -- baseline coverage (= Table C)
+  b.n          AS n_base,
+  b.n_died_1y  AS died_base,
+  b.n_alive_1y AS alive_base,
+  b.mortality_1y_pct AS mort1y_base_pct,
+
+  -- repeat coverage
+  r.n          AS n_rep,
+  r.n_died_1y  AS died_rep,
+  r.n_alive_1y AS alive_rep,
+  r.mortality_1y_pct AS mort1y_rep_pct,
+
+  -- attrition from baseline to repeat
+  b.n - r.n                                               AS lost_base_to_rep,
+  ROUND(100 * SAFE_DIVIDE(r.n, b.n), 1)                   AS pct_retained_base_to_rep,
+  ROUND(100 * SAFE_DIVIDE(r.n_died_1y, b.n_died_1y), 1)   AS pct_died_retained_base_to_rep,
+  ROUND(100 * SAFE_DIVIDE(r.n_alive_1y, b.n_alive_1y), 1) AS pct_alive_retained_base_to_rep,
+
+  -- repeat set as share of the cohort and of each outcome stratum
+  r.pct_of_cohort        AS pct_of_cohort_rep,
+  r.pct_of_died_stratum  AS pct_of_died_stratum_rep,
+  r.pct_of_alive_stratum AS pct_of_alive_stratum_rep
+FROM ${ref("t_coverage")} b
+JOIN ${ref("t_coverage")} r
+  ON r.level_id = b.level_id
+ AND r.mask = b.mask
+ AND r.definition = 'repeat'
+WHERE b.definition = 'baseline'
+  AND b.in_table_c
