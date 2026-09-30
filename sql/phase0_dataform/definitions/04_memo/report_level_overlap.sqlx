@@ -4,7 +4,7 @@ config {
   description: "Size and overlap of the three cohort levels."
 }
 
-WITH c AS (SELECT * FROM ${ref("c_cohort")})
+WITH c AS (SELECT * FROM ${ref("cohort")})
 SELECT 1 AS row_id, 'L1_CCU_HF_ICD_primary' AS metric, COUNTIF(level_id = 'L1') AS count_val FROM c UNION ALL
 SELECT 2, 'L2_CCU_no_HF_ICD',              COUNTIF(level_id = 'L2') FROM c UNION ALL
 SELECT 3, 'L3_CCU_CVICU_no_HF_ICD',        COUNTIF(level_id = 'L3') FROM c UNION ALL

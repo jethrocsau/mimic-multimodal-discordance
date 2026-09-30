@@ -6,7 +6,7 @@ dataformCoreVersion: 3.0.0
 
 vars:
   pre_h: "72"          # modality window start = ICU intime - pre_h hours
-  post_h: "72"         # modality window end   = ICU intime + post_h hours (exclusive)
+  post_h: "24"         # modality window end   = ICU intime + post_h hours (exclusive)
   follow_tail_h: "24"  # follow-up ends at LEAST(ICU outtime, in-hospital deathtime) + follow_tail_h hours
   # PhysioNet dataset versions used to build download paths in x_file_manifest
   cxr_jpg_version: "2.1.0"   # https://physionet.org/files/mimic-cxr-jpg/<version>/

@@ -16,5 +16,5 @@ SELECT
   COUNT(DISTINCT m.record_id)     AS n_records,
   COUNT(DISTINCT m.relative_path) AS n_files
 FROM ${ref("x_file_manifest")} m
-JOIN ${ref("c_cohort")} c USING (stay_id)
+JOIN ${ref("cohort")} c USING (stay_id)
 GROUP BY c.level_id, c.cohort_level, m.modality, m.physionet_project, m.physionet_version, m.file_role, m.phase

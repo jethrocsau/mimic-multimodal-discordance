@@ -20,7 +20,7 @@ levels AS (
   SELECT
     stay_id,
     ${constants.LEVELS.map((l) => `LOGICAL_OR(level_id = '${l.id}') AS ${l.flag}`).join(",\n    ")}
-  FROM ${ref("c_cohort")}
+  FROM ${ref("cohort")}
   GROUP BY stay_id
 ),
 win AS (
@@ -36,7 +36,7 @@ win AS (
                DATETIME '9999-12-31 00:00:00')
     ) AS f_end
   FROM levels lv
-  JOIN ${ref("c_icu_flags")} s USING (stay_id)
+  JOIN ${ref("cohort_eligibility")} s USING (stay_id)
   LEFT JOIN ${ref("admissions")} adm ON adm.hadm_id = s.hadm_id
 )
 SELECT

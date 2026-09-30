@@ -10,10 +10,10 @@ config {
 WITH
 defs AS (
   SELECT level_id, cohort_level, stay_id, died_1y, 'baseline' AS definition, base_mask AS stay_mask
-  FROM ${ref("s_level_stay")}
+  FROM ${ref("analysis_dataset")}
   UNION ALL
   SELECT level_id, cohort_level, stay_id, died_1y, 'repeat' AS definition, rep_mask AS stay_mask
-  FROM ${ref("s_level_stay")}
+  FROM ${ref("analysis_dataset")}
 ),
 counts AS (
   SELECT
@@ -26,7 +26,7 @@ counts AS (
     COUNTIF((d.stay_mask & cb.mask) = cb.mask AND d.died_1y)          AS n_died_1y,
     COUNTIF((d.stay_mask & cb.mask) = cb.mask AND NOT d.died_1y)      AS n_alive_1y
   FROM defs d
-  CROSS JOIN ${ref("t_modality_combos")} cb
+  CROSS JOIN ${ref("modality_combos")} cb
   GROUP BY d.level_id, d.cohort_level, d.definition, cb.mask, cb.size, cb.included_modalities, cb.in_table_c
 )
 SELECT

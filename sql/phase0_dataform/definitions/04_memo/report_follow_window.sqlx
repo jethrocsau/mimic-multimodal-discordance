@@ -16,5 +16,5 @@ SELECT
   APPROX_QUANTILES(follow_hours, 100)[OFFSET(50)] AS follow_h_median,
   APPROX_QUANTILES(follow_hours, 100)[OFFSET(75)] AS follow_h_p75,
   APPROX_QUANTILES(follow_hours, 100)[OFFSET(95)] AS follow_h_p95
-FROM ${ref("s_level_stay")}
+FROM ${ref("analysis_dataset")}
 GROUP BY level_id, cohort_level, outcome_1y

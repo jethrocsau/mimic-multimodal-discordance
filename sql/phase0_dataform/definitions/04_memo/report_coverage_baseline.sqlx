@@ -17,6 +17,6 @@ SELECT
   mortality_1y_pct,
   pct_of_died_stratum,
   pct_of_alive_stratum
-FROM ${ref("t_coverage")}
+FROM ${ref("report_coverage_long")}
 WHERE definition = 'baseline'
   AND in_table_c

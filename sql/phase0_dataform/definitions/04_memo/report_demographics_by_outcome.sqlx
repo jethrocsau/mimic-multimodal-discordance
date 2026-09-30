@@ -6,11 +6,11 @@ config {
 
 WITH
 sets AS (
-  SELECT 'A. Full cohort' AS analysis_set, * FROM ${ref("s_level_stay")}
+  SELECT 'A. Full cohort' AS analysis_set, * FROM ${ref("analysis_dataset")}
   UNION ALL
-  SELECT 'B. CXR present', * FROM ${ref("s_level_stay")} WHERE has_cxr
+  SELECT 'B. CXR present', * FROM ${ref("analysis_dataset")} WHERE has_cxr
   UNION ALL
-  SELECT 'C. All 5 modalities', * FROM ${ref("s_level_stay")} WHERE has_all5
+  SELECT 'C. All 5 modalities', * FROM ${ref("analysis_dataset")} WHERE has_all5
 ),
 denoms AS (
   SELECT level_id, analysis_set,

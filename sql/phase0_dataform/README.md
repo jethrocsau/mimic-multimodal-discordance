@@ -1,195 +1,270 @@
-# Phase 0 counting memo — Dataform project
+# MIMIC-IV multimodal cardiac ICU cohort (Dataform)
 
-BigQuery Dataform version of `phase0_counting_memo_v3.sql`. Same cohort logic, same
-windows, same 1-year outcome; reorganised so each stage is a saved table that can be
-rerun on its own, every modality is extracted once, and all counts come from the
-extraction tables.
+A BigQuery Dataform project that builds a cardiac ICU cohort from MIMIC-IV and extracts
+five data modalities for each patient: **vitals, labs, ECG, radiology notes and chest
+X-rays**. It produces:
 
-## Layout
+- one analysis table with one row per patient (outcome, demographics, which modalities
+  are available),
+- one record-level table per modality,
+- a download list for the CXR images and ECG waveforms, which are files on PhysioNet and
+  not in BigQuery,
+- report tables with cohort attrition and modality coverage.
+
+The outcome is death within 1 year of ICU admission.
+
+## Pipeline
 
 ```
-workflow_settings.yaml     project, dataset, and the window parameters (vars)
-includes/constants.js      unit names, cohort levels, modality bits, shared SQL builders
-definitions/
-  00_sources/              declarations of the physionet-data source tables
-  01_cohort/   c_*, t_table_a*          who is in each cohort level
-  02_extract/  x_*                      record-level extraction, one table per modality
-  03_stay/     s_*                      one row per stay: counts, bitmasks, outcome, demographics
-  04_memo/     t_*                      the memo tables
-  05_checks/   assert_*                 assertions (plus inline ones in the config blocks)
+cohort_eligibility ─► cohort ─► x_stays ─► x_vitals, x_labs, x_ecg, x_notes, x_cxr ─► stay_summary ─► analysis_dataset ─► report_*
+                                                  └─► x_file_manifest (download list)
 ```
 
-Tags: `cohort`, `extract`, `stay`, `memo`, `checks`. Run a stage with its tag.
-
-## Parameters (`workflow_settings.yaml` → `vars`)
-
-| var | default | meaning |
-|---|---|---|
-| `pre_h` | 72 | modality window starts at ICU intime − `pre_h` hours |
-| `post_h` | 72 | modality window ends at ICU intime + `post_h` hours (exclusive) |
-| `follow_tail_h` | 24 | follow-up ends at LEAST(ICU outtime, in-hospital deathtime) + `follow_tail_h` |
-
-Change a value and rerun from `02_extract` onwards; the cohort stage does not depend on them.
-Set `defaultProject` to your own GCP project before running.
-
-## Cohort levels (`c_cohort`, filter on `level_id`)
-
-| level_id | definition |
-|---|---|
-| L1 | first eligible CCU stay with an HF ICD code (primary; = Table A row 8) |
-| L2 | first eligible CCU stay, any diagnosis |
-| L3 | first eligible CCU or CVICU stay, any diagnosis |
-
-Common criteria: age ≥ 18, ICU LOS ≥ 24 h, no in-hospital death within 24 h of ICU
-admission. Each level picks its own first eligible stay, so a patient can be anchored to
-different stays in different levels (`t_table_a_levels` rows 7–8 count this).
-
-## Extraction (`x_*`)
-
-`x_stays` is the union of every level's stays, with one flag per level
-(`in_l1_ccu_hf`, `in_l2_ccu`, `in_l3_ccu_cvicu`) and the windows. Each modality table
-(`x_vitals`, `x_labs`, `x_ecg`, `x_notes`, `x_cxr`) holds every record for those stays in
-`[w_start, span_end)`, matched by `subject_id` + time, with:
-
-- `phase` = `'baseline'` (inside the modality window) or `'follow_up'` (after it, up to `f_end`)
-- `hours_from_icu_admit`, so you can narrow the window later (e.g. ±24 h) without re-extracting
-- the level flags, so one extraction serves all three levels
-
-```sql
--- primary cohort, frontal CXR images within ±24 h (download list)
-SELECT stay_id, study_id, dicom_id, jpg_path
-FROM phase0.x_cxr
-WHERE in_l1_ccu_hf AND ViewPosition IN ('AP', 'PA')
-  AND hours_from_icu_admit >= -24 AND hours_from_icu_admit < 24;
-```
-
-A patient can appear under more than one `stay_id` (see above); always filter by a level
-flag to get one stay per patient.
-
-Counting units: vitals = distinct charttime, labs = distinct specimen_id,
-ECG = distinct study_id, notes = distinct radiology note_id, CXR = distinct study_id.
-
-## Download manifest (`x_file_manifest`)
-
-One row per (stay, file) with `physionet_project`, `physionet_version`, `file_role`,
-`relative_path` and full `url`, plus the level flags, `phase` and `hours_from_icu_admit`
-so you can filter exactly like the extraction tables.
-
-| modality | project | file_role | path |
+| folder | tag | tables | what it holds |
 |---|---|---|---|
-| CXR | `mimic-cxr-jpg` | `cxr_image_jpg` | `files/pXX/pSUBJECT/sSTUDY/DICOM_ID.jpg` |
-| CXR | `mimic-cxr` | `cxr_image_dicom` | `files/pXX/pSUBJECT/sSTUDY/DICOM_ID.dcm` |
-| CXR | `mimic-cxr` | `cxr_report_txt` | `files/pXX/pSUBJECT/sSTUDY.txt` (one per study) |
-| ECG | `mimic-iv-ecg` | `ecg_header`, `ecg_signal` | `record_list.path` + `.hea` / `.dat` (both needed to read a WFDB record) |
-| Notes | `mimic-iv-note` | `bigquery_row` | none: MIMIC-IV-Note is one CSV, not per-note files; the text is already in `x_notes.text` |
+| `definitions/00_sources` | — | — | declarations of the `physionet-data` source tables |
+| `definitions/01_cohort` | `cohort` | `cohort_eligibility`, `cohort` | who is in the study |
+| `definitions/02_extract` | `extract` | `x_*` | the records for each modality |
+| `definitions/03_stay` | `stay` | `stay_summary`, `analysis_dataset` | one row per stay |
+| `definitions/04_memo` | `memo` | `report_*`, `modality_combos` | summary tables |
+| `definitions/05_checks` | `checks` | `assert_*` | data checks |
 
-Vitals and labs have no files either; they are rows in `x_vitals` / `x_labs`.
-Dataset versions are set in `workflow_settings.yaml` (`cxr_jpg_version`, `cxr_version`,
-`ecg_version`). `t_download_summary` counts distinct files per level, project, role and
-phase, so you can size a download first.
+`workflow_settings.yaml` holds the project, dataset and time-window settings.
+`includes/constants.js` holds shared names and SQL helpers.
 
-**Download a subset** (one project per list, because `--base` differs):
+## Before you start
 
-```bash
-# 1. path list: primary cohort, frontal JPGs within +/-24 h
-bq query --use_legacy_sql=false --format=csv --max_rows=10000000 '
-  SELECT DISTINCT relative_path FROM phase0.x_file_manifest
-  WHERE in_l1_ccu_hf AND file_role = "cxr_image_jpg"
-    AND view_position IN ("AP", "PA")
-    AND hours_from_icu_admit >= -24 AND hours_from_icu_admit < 24' | tail -n +2 > cxr_paths.txt
+- PhysioNet credentialed access to MIMIC-IV, MIMIC-IV-Note, MIMIC-IV-ECG, MIMIC-CXR and
+  MIMIC-CXR-JPG, with BigQuery access to `physionet-data` granted to your Google account.
+- A Google Cloud project with billing enabled.
 
-# 2. download only those files
-wget -r -N -c -np -nH --cut-dirs=1 --user YOUR_PHYSIONET_USERNAME --ask-password \
-  -i cxr_paths.txt --base=https://physionet.org/files/mimic-cxr-jpg/2.1.0/
+## Load and run
 
-# ECG: same pattern with file_role IN ("ecg_header", "ecg_signal")
-#      and --base=https://physionet.org/files/mimic-iv-ecg/1.0/
-```
+The project sits at the repository root on the `dataform` branch, and under
+`sql/phase0_dataform/` on `main`. BigQuery Dataform needs the project at the repository
+root, so link it to the `dataform` branch. The command line works from either.
 
-The same file can appear on several rows (one patient anchored to different stays in
-different levels), so always `SELECT DISTINCT relative_path`. Keep downloaded files in
-an environment covered by your PhysioNet data use agreement.
+In both cases, first set `defaultProject` in `workflow_settings.yaml` to your Google
+Cloud project ID.
 
-## Stay summary (`s_stay_summary`, `s_level_stay`)
+### Option A: BigQuery Dataform (in the browser)
 
-Per stay: record counts per modality and phase, then two bitmasks
-(bit 1 = Vitals, 2 = Labs, 4 = ECG, 8 = Notes, 16 = CXR):
+1. In the Google Cloud console, open **BigQuery → Dataform** and click **Create
+   repository**. Pick a US region, for example `us-central1`.
+2. Give the repository's service account the **BigQuery Job User** and **BigQuery Data
+   Editor** roles on your project. The console shows the account name when the
+   repository is created.
+3. Open the repository, go to **Settings → Connect with Git** and enter:
+   - the remote URL of this repository,
+   - default branch `dataform`,
+   - a GitHub personal access token, stored as a secret in Secret Manager. The service
+     account needs the **Secret Manager Secret Accessor** role on that secret.
+4. Create a **development workspace** and click **Pull from default branch**.
+5. Set `defaultProject` in `workflow_settings.yaml`.
+6. Click **Start execution** and choose **All actions**, or pick a tag.
 
-- `base_mask`: modalities with ≥ 1 record in the modality window
-- `rep_mask`: modalities with ≥ 1 record in the window **and** ≥ 1 in follow-up
+You can also skip step 3 and copy the files into the workspace by hand.
 
-`died_1y` = death (patients.dod, else in-hospital deathtime) within 365 days of ICU
-admission; `days_to_death` lets you derive other horizons. `s_level_stay` joins this to
-the cohort levels and adds `has_vitals` … `has_cxr`, `has_all5`.
+PhysioNet grants BigQuery access to your personal Google account, not to service
+accounts. If the run fails with a permission error on `physionet-data`, use Option B,
+which runs as you.
 
-## Memo tables (`t_*`)
-
-| table | old name | contents |
-|---|---|---|
-| `t_table_a` | Table A | L1 CONSORT attrition + HF rungs |
-| `t_table_a_levels` | — | level sizes and overlap |
-| `t_coverage` | — | **long table**: level × definition (`baseline`/`repeat`) × all 32 combinations, with 1-year mortality |
-| `t_table_c` (view) | Table C + C-S1 | `t_coverage` where baseline, Table C layout |
-| `t_table_c2` (view) | C-2 | `t_coverage` where repeat, all 32 combinations |
-| `t_table_c_s4` (view) | C-S4 | baseline vs repeat side by side, with attrition |
-| `t_table_c_s2_demo` | C-S2 | demographics by 1-year mortality, per set |
-| `t_table_c_s3_strata`, `t_table_c_s3_rollup` | C-S3 | age × sex × BMI strata, swap readiness |
-| `t_follow_window` | follow window | follow-up length by outcome |
-| `t_extraction_summary` | — | rows and stays per modality and level |
-| `t_download_summary` | — | distinct PhysioNet files per level, project, role and phase |
-
-A stay covers a combination when `(stay_mask & combo_mask) = combo_mask`, so Table C,
-C-S1, C-2 and C-S4 are consistent by construction. Every `t_*` table carries `level_id`;
-filter on it.
-
-## Checks
-
-Inline (in config blocks): unique stay per level and patient per level (`c_cohort`),
-unique stay (`c_icu_flags`, `x_stays`, `s_stay_summary`), non-null outcome and masks
-(`s_stay_summary`), one row per level × definition × combination (`t_coverage`).
-
-Standalone (`05_checks`):
-- `assert_levels_nested`: every L1 patient is in L2, every L2 patient is in L3
-- `assert_denominators`: every cohort stay has a summary; coverage denominators equal cohort sizes
-- `assert_cxr_timestamps_parse`: CXR images whose StudyDate/StudyTime failed to parse
-
-An assertion fails if it returns any rows; the failing rows are in the
-`phase0_assertions` dataset.
-
-## Running
-
-**BigQuery Studio → Dataform:** create a repository and workspace in the **US** region,
-add these files, set `defaultProject`, then *Start execution* (all actions, or by tag).
-
-**Access to physionet-data.** PhysioNet grants BigQuery access to your own Google
-account. A Dataform workflow run as a service account will not have that access. If an
-execution fails with a permission error on `physionet-data`, run with your own
-credentials instead, from the CLI:
+### Option B: command line
 
 ```bash
 npm i -g @dataform/cli
-cd phase0_dataform
 gcloud auth application-default login
-dataform init-creds          # choose "ADC", project = your defaultProject, location US
-dataform compile             # check
-dataform run --tags cohort   # or: extract, stay, memo, checks; no flag = everything
+
+cd sql/phase0_dataform       # on main; skip this on the dataform branch
+dataform init-creds          # choose ADC, your project, location US
+dataform compile             # checks the project for errors
+dataform run                 # builds everything
 ```
 
-`.df-credentials.json` is created by `init-creds`; keep it out of version control.
+To build one stage, use its tag, in this order:
 
-**Cost/size.** `x_vitals` and `x_labs` are the large tables: they hold every record for
-the whole ICU stay of every stay across the three levels (the follow-up phase is what
-makes them big). They are clustered on `stay_id, phase`. Rerunning only `memo` reads the
-small `s_*` tables and costs almost nothing.
+```bash
+dataform run --tags cohort
+dataform run --tags extract   # the large step
+dataform run --tags stay
+dataform run --tags memo
+dataform run --tags checks
+```
 
-## Notes carried over from the memo
+`init-creds` writes `.df-credentials.json`. It is in `.gitignore`; keep it out of git.
 
-- HF = any-position ICD-9 428.x / ICD-10 I50.x (acute **and** chronic codes).
-- Rung 2 uses itemid 50963 = NT-proBNP, > 125 pg/mL.
-- Notes = radiology reports only; `x_notes.is_chest_radiograph_report` flags reports of a
-  chest film, which describe the same exam as a CXR image.
-- Vitals come from ICU chartevents only (mimiciv_ed not used).
-- MIMIC-CXR covers 2011–2016 and was built from patients with an ED chest film in that
-  period, so most CXR missingness is structural (see the loss breakdown).
-- Verify that out-of-hospital death ascertainment in MIMIC-IV 3.1 covers 365 days after
-  ICU admission before relying on `died_1y` (protocol Table B).
+The output tables are written to the `phase0` dataset, and failed checks to
+`phase0_assertions`.
+
+## Settings
+
+Set in `workflow_settings.yaml` under `vars`:
+
+| setting | default | meaning |
+|---|---|---|
+| `pre_h` | 72 | the baseline window starts this many hours before ICU admission |
+| `post_h` | 24 | the baseline window ends this many hours after ICU admission |
+| `follow_tail_h` | 24 | follow-up ends this many hours after ICU discharge or in-hospital death, whichever is first |
+| `cxr_jpg_version`, `cxr_version`, `ecg_version` | 2.1.0, 2.1.0, 1.0 | PhysioNet dataset versions used to build download URLs |
+
+After changing a window setting, rerun from `extract` onwards. The cohort does not depend
+on the windows.
+
+## Cohort
+
+Every level requires age ≥ 18, an ICU stay of at least 24 hours, and no in-hospital death
+in the first 24 hours of the ICU stay. Each patient contributes their first eligible stay.
+
+| `level_id` | definition |
+|---|---|
+| L1 | coronary care unit (CCU) stay with a heart failure diagnosis code (ICD-9 428.x or ICD-10 I50.x, any position) |
+| L2 | CCU stay, any diagnosis |
+| L3 | CCU or cardiac vascular ICU (CVICU) stay, any diagnosis |
+
+Every L1 patient is in L2, and every L2 patient is in L3. Each level picks its own first
+eligible stay, so the same patient can have a different index stay in different levels.
+Always filter on one level.
+
+- `cohort_eligibility`: one row per ICU stay in MIMIC-IV, with a yes/no flag for each rule.
+- `cohort`: one row per level and patient, with the index stay.
+
+## Modality records (`x_*`)
+
+| table | one row per | source | counted as |
+|---|---|---|---|
+| `x_vitals` | vital-sign measurement | ICU `chartevents`, routine vital signs | distinct chart time |
+| `x_labs` | lab result | `labevents`, including ED and pre-admission draws | distinct specimen |
+| `x_ecg` | 12-lead ECG | MIMIC-IV-ECG record list | distinct study |
+| `x_notes` | radiology report, with full text | MIMIC-IV-Note `radiology` | distinct note |
+| `x_cxr` | chest X-ray image | MIMIC-CXR-JPG metadata | distinct study |
+
+`x_stays` lists the stays and their time windows. Each modality table holds every record
+from the start of the baseline window to the end of follow-up, matched by patient and
+time, with these columns:
+
+- `in_l1_ccu_hf`, `in_l2_ccu`, `in_l3_ccu_cvicu`: which cohort levels the stay belongs to.
+- `phase`: `baseline` (inside the baseline window) or `follow_up` (after it).
+- `hours_from_icu_admit`: lets you narrow the window without extracting again.
+
+## Analysis dataset
+
+`analysis_dataset` is the table to work from. Filter on `level_id` to get one row per
+patient.
+
+| columns | meaning |
+|---|---|
+| `died_1y`, `days_to_death` | death within 365 days of ICU admission, and days to death |
+| `age`, `sex`, `bmi`, `anchor_year_group` | demographics |
+| `n_<modality>_base`, `n_<modality>_follow` | record counts in the baseline window and in follow-up |
+| `has_vitals`, `has_labs`, `has_ecg`, `has_notes`, `has_cxr`, `has_all5` | at least one record in the baseline window |
+| `base_mask`, `rep_mask` | the same information as bitmasks (Vitals 1, Labs 2, ECG 4, Notes 8, CXR 16). `rep_mask` needs a record in baseline and in follow-up. |
+
+`stay_summary` holds the same columns with one row per stay, before the join to cohort
+levels.
+
+## Report tables
+
+Every report table has a `level_id` column; filter on it.
+
+| table | contents |
+|---|---|
+| `report_attrition` | patient counts after each inclusion rule (L1), and counts under stricter heart failure definitions |
+| `report_level_overlap` | size of each level and how the levels overlap |
+| `report_coverage_long` | patients and 1-year mortality for every combination of modalities, for baseline and for repeat (baseline and follow-up) availability |
+| `report_coverage_baseline` | baseline rows of `report_coverage_long`, without the two-modality combinations |
+| `report_coverage_repeat` | repeat rows of `report_coverage_long` |
+| `report_coverage_base_vs_repeat` | baseline and repeat coverage side by side, with the loss between them |
+| `report_demographics_by_outcome` | demographics of patients who died and who survived, with standardised mean differences |
+| `report_swap_strata` | coverage and outcome counts in each age × sex × BMI group |
+| `report_swap_readiness` | the groups in `report_swap_strata` graded by whether they hold enough died and surviving patients with all five modalities |
+| `report_follow_window` | length of follow-up, by outcome |
+| `report_extraction_summary` | rows and stays per modality |
+| `report_download_summary` | number of files per PhysioNet project, file type and phase |
+
+A row in the coverage tables counts every stay that has at least the listed modalities.
+`modality_combos` is the lookup of the 32 combinations.
+
+## Getting the data
+
+The examples use L3 and the baseline window.
+
+**Cohort, vitals, labs and notes** are complete in BigQuery:
+
+```sql
+SELECT * FROM phase0.analysis_dataset WHERE level_id = 'L3';
+SELECT * FROM phase0.x_vitals WHERE in_l3_ccu_cvicu AND phase = 'baseline';
+SELECT * FROM phase0.x_labs   WHERE in_l3_ccu_cvicu AND phase = 'baseline';
+SELECT * FROM phase0.x_notes  WHERE in_l3_ccu_cvicu AND phase = 'baseline';
+```
+
+**CXR images, CXR reports and ECG waveforms** are files on PhysioNet. `x_file_manifest`
+lists them, one row per stay and file:
+
+| `file_role` | PhysioNet project | file |
+|---|---|---|
+| `cxr_image_jpg` | `mimic-cxr-jpg` | image, `.jpg` |
+| `cxr_image_dicom` | `mimic-cxr` | image, `.dcm` |
+| `cxr_report_txt` | `mimic-cxr` | report, `.txt`, one per study |
+| `ecg_header`, `ecg_signal` | `mimic-iv-ecg` | `.hea` and `.dat`; both are needed to read a record |
+
+Check the size of the download first:
+
+```sql
+SELECT file_role, n_stays, n_files
+FROM phase0.report_download_summary
+WHERE level_id = 'L3' AND phase = 'baseline';
+```
+
+Then export the URLs and download them:
+
+```bash
+# PhysioNet login, so wget does not prompt for each file
+echo "machine physionet.org login YOUR_USER password YOUR_PASSWORD" >> ~/.netrc
+chmod 600 ~/.netrc
+
+bq query --use_legacy_sql=false --format=csv --max_rows=100000000 '
+  SELECT DISTINCT url FROM phase0.x_file_manifest
+  WHERE in_l3_ccu_cvicu AND phase = "baseline"
+    AND file_role IN ("cxr_image_jpg", "cxr_report_txt", "ecg_header", "ecg_signal")' \
+  | tail -n +2 > urls.txt
+
+xargs -P 8 -n 50 wget -q -N -c -x -nH --cut-dirs=1 < urls.txt
+```
+
+Files are saved as `<physionet_project>/<version>/<relative_path>`, which matches the
+columns in `x_file_manifest`, so you can join files back to `stay_id`. Rerunning the
+`wget` line fetches only the files that are missing.
+
+Keep downloaded data in a place covered by your PhysioNet data use agreement, and out of
+git.
+
+## Checks
+
+A check fails if it returns any rows. The failing rows are saved in `phase0_assertions`.
+
+- `assert_levels_nested`: every L1 patient is in L2, and every L2 patient is in L3.
+- `assert_denominators`: every cohort stay has a summary row, and coverage totals equal
+  cohort sizes.
+- `assert_cxr_timestamps_parse`: CXR images whose date or time could not be read. They
+  would otherwise drop out of every window.
+
+Several tables also check for unique keys and missing values when they are built.
+
+## Cost
+
+`x_vitals` and `x_labs` are the large tables, because they cover the whole ICU stay for
+every stay in the three levels. Rerunning only the `memo` stage reads small tables and
+costs almost nothing.
+
+## Definitions and limits
+
+- Heart failure means an ICD-9 428.x or ICD-10 I50.x code in any position, acute or chronic.
+- Notes are radiology reports only. `x_notes.is_chest_radiograph_report` marks reports of
+  a chest X-ray, which describe the same exam as a CXR image.
+- Vitals come from ICU charting only; emergency department vitals are not included.
+- Records are matched by patient and time, so a record from another encounter counts if
+  it falls inside the window.
+- MIMIC-CXR covers 2011–2016 and was built from patients with an emergency department
+  chest X-ray, so most missing CXRs are missing because of how the dataset was built.
+- Death dates after discharge come from `patients.dod`. Confirm that they cover 365 days
+  after ICU admission in your MIMIC-IV version before relying on `died_1y`.

@@ -15,5 +15,5 @@ SELECT
   n_died_1y,
   n_alive_1y,
   mortality_1y_pct
-FROM ${ref("t_coverage")}
+FROM ${ref("report_coverage_long")}
 WHERE definition = 'repeat'
