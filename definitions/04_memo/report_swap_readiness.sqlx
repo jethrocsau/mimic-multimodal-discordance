@@ -13,5 +13,5 @@ SELECT
   SUM(all5_died)  AS died,
   SUM(all5_alive) AS alive,
   ROUND(100 * SAFE_DIVIDE(SUM(all5_n), SUM(SUM(all5_n)) OVER (PARTITION BY level_id)), 1) AS pct_of_all5_set
-FROM ${ref("t_table_c_s3_strata")}
+FROM ${ref("report_swap_strata")}
 GROUP BY level_id, cohort_level, swap_readiness

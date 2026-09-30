@@ -15,7 +15,7 @@ config {
 WITH
 eligible AS (
   SELECT *
-  FROM ${ref("c_icu_flags")}
+  FROM ${ref("cohort_eligibility")}
   WHERE flag_age AND flag_los AND NOT flag_died_before_24h
 ),
 candidates AS (

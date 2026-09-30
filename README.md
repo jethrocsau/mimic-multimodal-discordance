@@ -12,11 +12,11 @@ workflow_settings.yaml     project, dataset, and the window parameters (vars)
 includes/constants.js      unit names, cohort levels, modality bits, shared SQL builders
 definitions/
   00_sources/              declarations of the physionet-data source tables
-  01_cohort/   c_*, t_table_a*          who is in each cohort level
-  02_extract/  x_*                      record-level extraction, one table per modality
-  03_stay/     s_*                      one row per stay: counts, bitmasks, outcome, demographics
-  04_memo/     t_*                      the memo tables
-  05_checks/   assert_*                 assertions (plus inline ones in the config blocks)
+  01_cohort/   cohort_eligibility, cohort       who is in each cohort level
+  02_extract/  x_*                              record-level extraction, one table per modality
+  03_stay/     stay_summary, analysis_dataset   one row per stay: counts, bitmasks, outcome, demographics
+  04_memo/     report_*, modality_combos        the memo tables
+  05_checks/   assert_*                         assertions (plus inline ones in the config blocks)
 ```
 
 Tags: `cohort`, `extract`, `stay`, `memo`, `checks`. Run a stage with its tag.
@@ -26,23 +26,23 @@ Tags: `cohort`, `extract`, `stay`, `memo`, `checks`. Run a stage with its tag.
 | var | default | meaning |
 |---|---|---|
 | `pre_h` | 72 | modality window starts at ICU intime − `pre_h` hours |
-| `post_h` | 72 | modality window ends at ICU intime + `post_h` hours (exclusive) |
+| `post_h` | 24 | modality window ends at ICU intime + `post_h` hours (exclusive) |
 | `follow_tail_h` | 24 | follow-up ends at LEAST(ICU outtime, in-hospital deathtime) + `follow_tail_h` |
 
 Change a value and rerun from `02_extract` onwards; the cohort stage does not depend on them.
 Set `defaultProject` to your own GCP project before running.
 
-## Cohort levels (`c_cohort`, filter on `level_id`)
+## Cohort levels (`cohort`, filter on `level_id`)
 
 | level_id | definition |
 |---|---|
-| L1 | first eligible CCU stay with an HF ICD code (primary; = Table A row 8) |
+| L1 | first eligible CCU stay with an HF ICD code (primary; = `report_attrition` row 8, memo Table A) |
 | L2 | first eligible CCU stay, any diagnosis |
 | L3 | first eligible CCU or CVICU stay, any diagnosis |
 
 Common criteria: age ≥ 18, ICU LOS ≥ 24 h, no in-hospital death within 24 h of ICU
 admission. Each level picks its own first eligible stay, so a patient can be anchored to
-different stays in different levels (`t_table_a_levels` rows 7–8 count this).
+different stays in different levels (`report_level_overlap` rows 7–8 count this).
 
 ## Extraction (`x_*`)
 
@@ -85,7 +85,7 @@ so you can filter exactly like the extraction tables.
 
 Vitals and labs have no files either; they are rows in `x_vitals` / `x_labs`.
 Dataset versions are set in `workflow_settings.yaml` (`cxr_jpg_version`, `cxr_version`,
-`ecg_version`). `t_download_summary` counts distinct files per level, project, role and
+`ecg_version`). `report_download_summary` counts distinct files per level, project, role and
 phase, so you can size a download first.
 
 **Download a subset** (one project per list, because `--base` differs):
@@ -110,7 +110,7 @@ The same file can appear on several rows (one patient anchored to different stay
 different levels), so always `SELECT DISTINCT relative_path`. Keep downloaded files in
 an environment covered by your PhysioNet data use agreement.
 
-## Stay summary (`s_stay_summary`, `s_level_stay`)
+## Analysis dataset (`stay_summary`, `analysis_dataset`)
 
 Per stay: record counts per modality and phase, then two bitmasks
 (bit 1 = Vitals, 2 = Labs, 4 = ECG, 8 = Notes, 16 = CXR):
@@ -119,34 +119,35 @@ Per stay: record counts per modality and phase, then two bitmasks
 - `rep_mask`: modalities with ≥ 1 record in the window **and** ≥ 1 in follow-up
 
 `died_1y` = death (patients.dod, else in-hospital deathtime) within 365 days of ICU
-admission; `days_to_death` lets you derive other horizons. `s_level_stay` joins this to
-the cohort levels and adds `has_vitals` … `has_cxr`, `has_all5`.
+admission; `days_to_death` lets you derive other horizons. `analysis_dataset` joins this to
+the cohort levels and adds `has_vitals` … `has_cxr`, `has_all5`. **`analysis_dataset` is the
+table to work from**: filter on `level_id` to get one row per patient.
 
-## Memo tables (`t_*`)
+## Memo tables (`report_*`)
 
-| table | old name | contents |
+| table | memo label | contents |
 |---|---|---|
-| `t_table_a` | Table A | L1 CONSORT attrition + HF rungs |
-| `t_table_a_levels` | — | level sizes and overlap |
-| `t_coverage` | — | **long table**: level × definition (`baseline`/`repeat`) × all 32 combinations, with 1-year mortality |
-| `t_table_c` (view) | Table C + C-S1 | `t_coverage` where baseline, Table C layout |
-| `t_table_c2` (view) | C-2 | `t_coverage` where repeat, all 32 combinations |
-| `t_table_c_s4` (view) | C-S4 | baseline vs repeat side by side, with attrition |
-| `t_table_c_s2_demo` | C-S2 | demographics by 1-year mortality, per set |
-| `t_table_c_s3_strata`, `t_table_c_s3_rollup` | C-S3 | age × sex × BMI strata, swap readiness |
-| `t_follow_window` | follow window | follow-up length by outcome |
-| `t_extraction_summary` | — | rows and stays per modality and level |
-| `t_download_summary` | — | distinct PhysioNet files per level, project, role and phase |
+| `report_attrition` | Table A | L1 CONSORT attrition + HF rungs |
+| `report_level_overlap` | — | level sizes and overlap |
+| `report_coverage_long` | — | **long table**: level × definition (`baseline`/`repeat`) × all 32 combinations, with 1-year mortality |
+| `report_coverage_baseline` (view) | Table C + C-S1 | `report_coverage_long` where baseline, Table C layout |
+| `report_coverage_repeat` (view) | C-2 | `report_coverage_long` where repeat, all 32 combinations |
+| `report_coverage_base_vs_repeat` (view) | C-S4 | baseline vs repeat side by side, with attrition |
+| `report_demographics_by_outcome` | C-S2 | demographics by 1-year mortality, per set |
+| `report_swap_strata`, `report_swap_readiness` | C-S3 | age × sex × BMI strata, swap readiness |
+| `report_follow_window` | — | follow-up length by outcome |
+| `report_extraction_summary` | — | rows and stays per modality and level |
+| `report_download_summary` | — | distinct PhysioNet files per level, project, role and phase |
 
 A stay covers a combination when `(stay_mask & combo_mask) = combo_mask`, so Table C,
-C-S1, C-2 and C-S4 are consistent by construction. Every `t_*` table carries `level_id`;
+C-S1, C-2 and C-S4 are consistent by construction. Every `report_*` table carries `level_id`;
 filter on it.
 
 ## Checks
 
-Inline (in config blocks): unique stay per level and patient per level (`c_cohort`),
-unique stay (`c_icu_flags`, `x_stays`, `s_stay_summary`), non-null outcome and masks
-(`s_stay_summary`), one row per level × definition × combination (`t_coverage`).
+Inline (in config blocks): unique stay per level and patient per level (`cohort`),
+unique stay (`cohort_eligibility`, `x_stays`, `stay_summary`), non-null outcome and masks
+(`stay_summary`), one row per level × definition × combination (`report_coverage_long`).
 
 Standalone (`05_checks`):
 - `assert_levels_nested`: every L1 patient is in L2, every L2 patient is in L3
@@ -180,7 +181,7 @@ dataform run --tags cohort   # or: extract, stay, memo, checks; no flag = everyt
 **Cost/size.** `x_vitals` and `x_labs` are the large tables: they hold every record for
 the whole ICU stay of every stay across the three levels (the follow-up phase is what
 makes them big). They are clustered on `stay_id, phase`. Rerunning only `memo` reads the
-small `s_*` tables and costs almost nothing.
+small `stay_summary` table and costs almost nothing.
 
 ## Notes carried over from the memo
 

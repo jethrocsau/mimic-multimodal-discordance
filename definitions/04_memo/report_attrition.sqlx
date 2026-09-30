@@ -5,8 +5,8 @@ config {
 }
 
 WITH
-f AS (SELECT * FROM ${ref("c_icu_flags")}),
-l1 AS (SELECT * FROM ${ref("c_cohort")} WHERE level_id = 'L1')
+f AS (SELECT * FROM ${ref("cohort_eligibility")}),
+l1 AS (SELECT * FROM ${ref("cohort")} WHERE level_id = 'L1')
 SELECT 1 AS row_id, 'Total_ICU_Stays' AS metric, COUNT(*) AS count_val FROM f UNION ALL
 SELECT 2,  'Inclusion_Age_GE_18',                    COUNTIF(flag_age) FROM f UNION ALL
 SELECT 3,  'Inclusion_First_Careunit_CCU',           COUNTIF(flag_age AND flag_ccu) FROM f UNION ALL

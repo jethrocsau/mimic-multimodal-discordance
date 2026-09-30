@@ -16,5 +16,5 @@ SELECT
   COUNT(DISTINCT IF(r.phase = 'baseline', r.stay_id, NULL)) AS stays_with_baseline_record,
   COUNT(DISTINCT r.stay_id)                               AS stays_with_any_record
 FROM recs r
-JOIN ${ref("c_cohort")} c USING (stay_id)
+JOIN ${ref("cohort")} c USING (stay_id)
 GROUP BY c.level_id, c.cohort_level, r.modality, r.bit

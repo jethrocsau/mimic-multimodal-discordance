@@ -10,5 +10,5 @@ SELECT
   s.*,
   ${constants.MODALITIES.map((m) => `(s.base_mask & ${m.bit}) > 0 AS has_${m.key}`).join(",\n  ")},
   s.base_mask = ${constants.ALL_MODALITIES_MASK} AS has_all5
-FROM ${ref("c_cohort")} c
-JOIN ${ref("s_stay_summary")} s USING (stay_id)
+FROM ${ref("cohort")} c
+JOIN ${ref("stay_summary")} s USING (stay_id)

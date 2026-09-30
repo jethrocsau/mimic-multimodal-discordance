@@ -7,17 +7,17 @@ config {
 WITH
 sizes AS (
   SELECT level_id, COUNT(*) AS n_cohort
-  FROM ${ref("c_cohort")}
+  FROM ${ref("cohort")}
   GROUP BY level_id
 ),
 denoms AS (
   SELECT level_id, definition, n AS n_denominator
-  FROM ${ref("t_coverage")}
+  FROM ${ref("report_coverage_long")}
   WHERE mask = 0
 )
-SELECT 'stay missing from s_stay_summary' AS problem, c.level_id, CAST(c.stay_id AS STRING) AS detail
-FROM ${ref("c_cohort")} c
-LEFT JOIN ${ref("s_stay_summary")} s USING (stay_id)
+SELECT 'stay missing from stay_summary' AS problem, c.level_id, CAST(c.stay_id AS STRING) AS detail
+FROM ${ref("cohort")} c
+LEFT JOIN ${ref("stay_summary")} s USING (stay_id)
 WHERE s.stay_id IS NULL
 UNION ALL
 SELECT 'coverage denominator != cohort size', d.level_id,
