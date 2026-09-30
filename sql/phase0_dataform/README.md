@@ -40,9 +40,8 @@ cohort_eligibility ─► cohort ─► x_stays ─► x_vitals, x_labs, x_ecg, 
 
 ## Load and run
 
-The project sits at the repository root on the `dataform` branch, and under
-`sql/phase0_dataform/` on `main`. BigQuery Dataform needs the project at the repository
-root, so link it to the `dataform` branch. The command line works from either.
+This branch holds the Dataform project at the repository root, which is where BigQuery
+Dataform looks for it. You can run it in the browser or from the command line.
 
 In both cases, first set `defaultProject` in `workflow_settings.yaml` to your Google
 Cloud project ID.
@@ -75,7 +74,7 @@ which runs as you.
 npm i -g @dataform/cli
 gcloud auth application-default login
 
-cd sql/phase0_dataform       # on main; skip this on the dataform branch
+git checkout dataform        # run from the repository root
 dataform init-creds          # choose ADC, your project, location US
 dataform compile             # checks the project for errors
 dataform run                 # builds everything
