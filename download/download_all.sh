@@ -66,7 +66,9 @@ STAGE="${STAGE:-/content/stage}"                         # local disk, emptied a
 IMAGE_FILTER="${IMAGE_FILTER:-frontal_one_per_study}"    # frontal_one_per_study | frontal | all
 SOURCE="${SOURCE:-auto}"                                 # auto (Cloud Storage, else physionet.org) | gcs | physionet
 WORKERS="${WORKERS:-6}"                                  # parallel wget processes for physionet.org; keep <= 8
-CHUNK="${CHUNK:-5000}"                                   # files per shard (one .tar on Drive)
+CHUNK="${CHUNK:-}"                                       # files per shard (one .tar on Drive); default 500 for
+                                                         # mimic-cxr-jpg (~750 MB), 5000 otherwise, so progress is
+                                                         # saved to Drive every few minutes even from physionet.org
 LIMIT="${LIMIT:-0}"                                      # >0: download at most this many new files per project
 EXTRACT_TO="${EXTRACT_TO:-/content/data}"                # local disk target for the extract part
 DEEP_VERIFY="${DEEP_VERIFY:-0}"                          # 1: verify lists the contents of every shard
@@ -148,16 +150,17 @@ download_project() {
   rm -rf "$work"
   mkdir -p "$work"
 
+  # A project that cannot be reached is skipped, so the other projects still download.
   src=$(pick_source "$project" "$bucket" "$list")
   case "$src" in
-    none) echo "$project: SOURCE=gcs but Cloud Storage cannot be used" >&2; exit 1 ;;
+    none) skip_project "$project" "SOURCE=gcs but Cloud Storage cannot be used"; return 0 ;;
     physionet)
       if [ -z "${PHYSIONET_AUTH:-}" ]; then
-        echo "$project: physionet.org needs PHYSIONET_USER and PHYSIONET_PASS in .env" >&2; exit 1
+        skip_project "$project" "physionet.org needs PHYSIONET_USER and PHYSIONET_PASS"; return 0
       fi
       if ! wget -q -O /dev/null "$base/$(head -n 1 "$list")"; then
-        echo "$project: PhysioNet refused the first file. Check PHYSIONET_USER/PASS and that you signed this project's DUA." >&2
-        exit 1
+        skip_project "$project" "PhysioNet refused the first file. Check PHYSIONET_USER/PASS and that you signed this project's DUA"
+        return 0
       fi ;;
   esac
 
@@ -177,7 +180,9 @@ download_project() {
   fi
   echo "$project $version from $src: $(wc -l < "$list") listed, $(wc -l < "$work/todo") to download"
   [ -s "$work/todo" ] || return 0
-  split -l "$CHUNK" "$work/todo" "$work/chunk_"
+  local chunk_size=${CHUNK:-5000}
+  [ -z "$CHUNK" ] && [ "$project" = mimic-cxr-jpg ] && chunk_size=500
+  split -a 4 -l "$chunk_size" "$work/todo" "$work/chunk_"
 
   local chunk shard
   for chunk in "$work"/chunk_*; do
@@ -214,9 +219,19 @@ download_project() {
   return 0
 }
 
+SKIPPED=()
+skip_project() {
+  echo "$1: $2; skipped" >&2
+  SKIPPED+=("$1")
+}
+
 part_download() {
   setup_physionet_auth
   for p in "${PROJECTS[@]}"; do download_project "$p"; done
+  if [ ${#SKIPPED[@]} -gt 0 ]; then
+    echo "Skipped, fix access and rerun download: ${SKIPPED[*]}" >&2
+  fi
+  return 0
 }
 
 # Rebuild the done lists from the shards actually on Drive, so files lost to a dropped
