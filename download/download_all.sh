@@ -82,6 +82,12 @@ PARTS=("$@")
 
 mkdir -p "$OUT"/{tables,lists,logs,physionet} "$STAGE"
 
+# Two runs at once share $STAGE and delete each other's downloads, so only one may run.
+if command -v flock > /dev/null; then
+  exec 9> "$STAGE/.lock"
+  flock -n 9 || { echo "Another download_all.sh is already running on this machine; wait for it or stop it (pkill -f download_all.sh)." >&2; exit 1; }
+fi
+
 # The Python helpers live next to this script and read their settings from the environment.
 HERE="$(cd "$(dirname "$0")" && pwd)"
 export PROJECT DATASET OUT STAGE IMAGE_FILTER
