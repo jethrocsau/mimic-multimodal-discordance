@@ -1,3 +1,7 @@
 .env
 /dev
 *.DS_Store
+mmd.toml
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/

@@ -1,23 +1,34 @@
-"""ChunkStore: a run is a folder of chunk .npz files, local or on gs://.
+"""EmbeddingStore: one model's stored readouts, a folder of chunk .npz files (local or gs://), plus its index.
 
-Same chunk format as the notebooks (arrays keyed by name, plus `record`), so existing runs are read in place.
-New chunks also get a `<chunk>.records.txt` sidecar, so resuming and indexing read a few KB per chunk instead
-of the arrays; legacy chunks without one fall back to reading their `record` array. Resume is keyed on the
-record ids, not on chunk numbers, so the record list can change between sessions without redoing work.
+A run folder (`emb/<cohort_version>/<model>/`) holds
+    chunk_*.npz (+ .records.txt)   readouts of a block of records: arrays keyed by name, plus `record`
+    index.parquet                  record -> chunk, row (a cache, rebuilt from the chunks' record lists)
+    runs.parquet                   one row per generation run (code commit, cohort hash, timing)
+    manifest.json                  the model's info and the cohort hash of every modality set it ran
+    sources.json                   read-only folders (notebook runs) and lookup runs registered by `index import`
+    cohort_mean_<mod>_<set>.npz    the cohort-mean signal of the mean swap
 
-Chunk names: chunk_<idx>.npz (unsharded, as the notebooks wrote them) or chunk_s<k>of<n>_<idx>.npz, so
-shards running at the same time never collide.
+Same chunk format as the notebooks, so existing runs are read in place. Resume is keyed on the record ids, not on
+chunk numbers, so the record list can change between sessions without redoing work. Chunk names: chunk_<idx>.npz
+(unsharded, as the notebooks wrote them) or chunk_s<k>of<n>_<idx>.npz, so shards never collide.
+
+Readouts are loaded under mmd's names: the keys the notebooks stored (NOTEBOOK_KEYS, plus a model's own `keymap`)
+are renamed on load, so imported notebook chunks and new chunks read as one set of names.
 """
-import os
 import re
+import subprocess
 import zlib
+from datetime import datetime, timezone
 from typing import Callable, Dict, Iterable, Optional
 
 import numpy as np
+import pandas as pd
 
 from . import fsio
 
 META = {"record", "layers", "n_nan", "failed", "failed_reason", "missing"}
+NOTEBOOK_KEYS = {'p_yes': 'yes_probability', 'post_last': 'prompt_last_state', 'post_all': 'prompt_mean_state',
+                 'ans_emb': 'answer_mean_state', 'answer': 'answer_text', 'prefix_mean': 'projector_mean'}
 _NAME = re.compile(r'chunk_(?:s(\d+)of(\d+)_)?(\d+)\.npz$')
 
 
@@ -40,12 +51,23 @@ def _same_width(key, parts):
             else np.full((len(p),) + shape, np.nan, p.dtype) for p in parts]
 
 
-class ChunkStore:
+def repo_ref(path='.') -> str:
+    """The commit the code runs at (recorded with every run); '' outside a git checkout."""
+    try:
+        out = subprocess.run(['git', '-C', path, 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True)
+        dirty = subprocess.run(['git', '-C', path, 'status', '--porcelain', '--', 'mmd'], capture_output=True,
+                               text=True).stdout.strip()
+        return out.stdout.strip() + ('-dirty' if dirty else '')
+    except Exception:
+        return ''
+
+
+class EmbeddingStore:
     def __init__(self, out_dir: str, keymap: Dict[str, str] = None, read_dirs=()):
-        """keymap: stored key -> common key, applied on load (e.g. LLaVA post_image -> post_signal).
-        read_dirs: extra folders read but never written (e.g. a legacy notebook run, imported in place)."""
+        """keymap: a model's own stored key -> current key (e.g. LLaVA post_image -> signal_mean_state).
+        read_dirs: extra folders read but never written (e.g. a notebook run, imported in place)."""
         self.dir = out_dir.rstrip('/')
-        self.keymap = keymap or {}
+        self.names = {**NOTEBOOK_KEYS, **(keymap or {})}
         self.read_dirs = [d.rstrip('/') for d in read_dirs]
 
     @classmethod
@@ -56,8 +78,13 @@ class ChunkStore:
         return cls(run_dir, keymap, extra)
 
     def __repr__(self):
-        return f"ChunkStore({self.dir}, {len(self.paths())} chunks)"
+        return f"EmbeddingStore({self.dir}, {len(self.paths())} chunks)"
 
+    def stored_names(self, key) -> list:
+        """Every name `key` may be stored under (today's name first)."""
+        return [key] + [old for old, new in self.names.items() if new == key and old != key]
+
+    # ── chunks ───────────────────────────────────────────────────────────────
     def paths(self, own_only=False):
         dirs = [self.dir] + ([] if own_only else self.read_dirs)
         return [p for d in dirs for p in fsio.glob(f"{d}/chunk_*.npz") if _NAME.search(p) and '.tmp' not in p]
@@ -68,7 +95,7 @@ class ChunkStore:
             return [r for r in fsio.read_text(side).split('\n') if r]
         return fsio.load_npz(path, keys=['record'])['record'].tolist()
 
-    def index(self) -> Dict[str, list]:
+    def chunk_records(self) -> Dict[str, list]:
         """chunk path -> its record ids."""
         out = {}
         for p in self.paths():
@@ -79,11 +106,7 @@ class ChunkStore:
         return out
 
     def done(self) -> set:
-        return {r for recs in self.index().values() for r in recs}
-
-    def status(self, records):
-        done = self.done()
-        return dict(done=len(done), todo=sum(r not in done for r in records), chunks=len(self.paths()))
+        return {r for recs in self.chunk_records().values() for r in recs}
 
     def _next_idx(self, shard):
         idx = -1
@@ -129,25 +152,21 @@ class ChunkStore:
         return saved
 
     def load(self, keys=None, records=None, dtype=np.float32, chunks: Optional[Iterable[str]] = None):
-        """Read back, optionally only some arrays, some records, or some chunks (from the index)."""
-        inv = {v: k for k, v in self.keymap.items()}
+        """Read back under today's names, optionally only some readouts, records, or chunks (from the index)."""
         want = set(records) if records is not None else None
+        stored = None if keys is None else [n for k in keys for n in self.stored_names(k)] + ['record']
         acc, recs = {}, []
         for p in (list(chunks) if chunks is not None else self.paths()):
-            if want is not None:
-                rec_here = self.records_of(p)
-                if not any(r in want for r in rec_here):
-                    continue
-            stored = [inv.get(k, k) for k in keys] + ['record'] if keys is not None else None
+            if want is not None and not any(r in want for r in self.records_of(p)):
+                continue
             z = fsio.load_npz(p, keys=stored)
             rec = z['record']
             sel = np.ones(len(rec), bool) if want is None else np.array([r in want for r in rec])
             if not sel.any():
                 continue
-            use = [k for k in z if k not in META]
-            for k in use:
+            for k in [k for k in z if k not in META]:
                 a = z[k][sel]
-                acc.setdefault(self.keymap.get(k, k), []).append(a.astype(dtype) if a.dtype.kind == 'f' else a)
+                acc.setdefault(self.names.get(k, k), []).append(a.astype(dtype) if a.dtype.kind == 'f' else a)
             recs.append(rec[sel])
         if not recs:
             return None
@@ -155,7 +174,48 @@ class ChunkStore:
         out["record"] = np.concatenate(recs)
         return out
 
+    # ── index: record -> chunk, row (a cache of the chunks' record lists) ───
+    @property
+    def index_path(self):
+        return f'{self.dir}/index.parquet'
+
+    def build_index(self, run_ref: str = '') -> pd.DataFrame:
+        rows = [(r, path, i) for path, recs in self.chunk_records().items() for i, r in enumerate(recs)]
+        idx = pd.DataFrame(rows, columns=['record', 'chunk', 'row'])
+        return idx.drop_duplicates('record', keep='last').assign(run_ref=run_ref)   # a record re-run later wins
+
+    def save_index(self, idx: pd.DataFrame):
+        fsio.write_parquet(idx, self.index_path)
+
+    def load_index(self) -> pd.DataFrame:
+        p = self.index_path
+        return fsio.read_parquet(p) if fsio.exists(p) else pd.DataFrame(columns=['record', 'chunk', 'row'])
+
     @staticmethod
-    def row_index(run):
-        """record -> row number, for aligning a run to a cohort table."""
-        return {r: i for i, r in enumerate(run["record"])}
+    def chunks_for(idx: pd.DataFrame, records) -> Optional[list]:
+        """The chunks holding `records` (None = no index yet: read every chunk)."""
+        return sorted(set(idx[idx.record.isin(set(records))].chunk)) if len(idx) else None
+
+    # ── run folder metadata ─────────────────────────────────────────────────
+    def log_run(self, **fields):
+        p = f'{self.dir}/runs.parquet'
+        old = fsio.read_parquet(p) if fsio.exists(p) else pd.DataFrame()
+        row = pd.DataFrame([dict(logged=datetime.now(timezone.utc).isoformat(timespec='seconds'), **fields)])
+        fsio.write_parquet(pd.concat([old, row.astype(str)], ignore_index=True), p)
+
+    def run_info(self) -> dict:
+        p = f'{self.dir}/manifest.json'
+        return fsio.read_json(p) if fsio.exists(p) else {}
+
+    def record_cohort(self, info: dict, modset: str, cohort_hash: str):
+        """Note which cohort manifest this model ran on, per modality set."""
+        hashes = {**self.run_info().get('cohort_hashes', {}), modset: cohort_hash}
+        fsio.write_json(dict(info, cohort_hashes=hashes), f'{self.dir}/manifest.json')
+
+    def cohort_hash(self, modset: str):
+        """The cohort hash this model's records of `modset` were generated on (None = never recorded)."""
+        return self.run_info().get('cohort_hashes', {}).get(modset)
+
+    def sources(self) -> dict:
+        p = f'{self.dir}/sources.json'
+        return fsio.read_json(p) if fsio.exists(p) else {}

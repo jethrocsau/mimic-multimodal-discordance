@@ -5,10 +5,10 @@ Covers models whose processor takes {"type": "image"} chat content and whose ima
 override `messages()` for a different template.
 
 One greedy generate() call gives everything:
-    prefill final-layer states (hidden_states[0])  -> post_last / post_all / post_signal (image-token span)
-    first-step logits                               -> p_yes
-    states of the generated tokens fed back in       -> ans_emb (mean), answer text
-Hooks on the vision tower and the projector give pre_vision_mean / pre_proj_mean. The mean swap replaces the
+    prefill final-layer states (hidden_states[0])  -> prompt_last_state / prompt_mean_state / signal_mean_state
+    first-step logits                               -> yes_probability
+    states of the generated tokens fed back in       -> answer_mean_state, answer_text
+Hooks on the vision tower and the projector give encoder_mean / projector_mean. The mean swap replaces the
 projector output with the cohort mean (same hook point), as MeanProjector does for LLaVA-Med.
 """
 import contextlib
@@ -16,7 +16,7 @@ import contextlib
 import numpy as np
 
 from .. import prompts
-from .base import Adapter, Sample, to_np
+from .base import Adapter, ReadoutSpec, Sample, to_np
 
 
 def find_module(model, *suffixes):
@@ -44,10 +44,10 @@ def readouts_from_generate(torch, gen, L, span, yes_ids, no_ids, tok):
     # hidden_states[t] (t >= 1) is the step that consumed generated token t-1
     states = [gen.hidden_states[t][-1][0, -1].float() for t in range(1, min(n_ans, len(gen.hidden_states) - 1) + 1)]
     nan = torch.full((hs.shape[1],), float('nan'))
-    return dict(p_yes=float(p_yes), post_last=to_np(hs[-1]), post_all=to_np(hs.mean(0)),
-                post_signal=to_np(hs[span[0]:span[1]].mean(0)) if span else to_np(nan),
-                ans_emb=to_np(torch.stack(states).mean(0) if states else hs[-1]),
-                answer=tok.decode(new[:n_ans], skip_special_tokens=True).strip(),
+    return dict(yes_probability=float(p_yes), prompt_last_state=to_np(hs[-1]), prompt_mean_state=to_np(hs.mean(0)),
+                signal_mean_state=to_np(hs[span[0]:span[1]].mean(0)) if span else to_np(nan),
+                answer_mean_state=to_np(torch.stack(states).mean(0) if states else hs[-1]),
+                answer_text=tok.decode(new[:n_ans], skip_special_tokens=True).strip(),
                 signal_span=(span[1] - span[0]) if span else 0)
 
 
@@ -58,8 +58,8 @@ class HFImageTextAdapter(Adapter):
     answer_cue = 'Answer:'
     system = None                       # optional system turn
     supports_mean = True
-    readouts = Adapter.readouts + [('signal projector mean', 'projector', 'pre_proj_mean', None)]
-    note_blind = ('post_signal', 'signal projector mean')
+    readouts = Adapter.readouts + [ReadoutSpec('signal projector mean', 'projector', 'projector_mean')]
+    note_blind = ('signal mean state', 'signal projector mean')
 
     def load(self, device='cuda'):
         import torch
@@ -128,19 +128,19 @@ class HFImageTextAdapter(Adapter):
                                       output_hidden_states=True, output_logits=True, return_dict_in_generate=True)
         r = readouts_from_generate(torch, gen, L, self._span(x['input_ids']), self.yes_ids, self.no_ids, self.tok)
         if sample.signal is not None and 'proj' in cap:
-            r['pre_proj_mean'] = to_np(cap['proj'][0].float().reshape(-1, cap['proj'].shape[-1]).mean(0))
-            r['pre_vision_mean'] = to_np(cap['vision'][0].float().reshape(-1, cap['vision'].shape[-1]).mean(0)) \
+            r['projector_mean'] = to_np(cap['proj'][0].float().reshape(-1, cap['proj'].shape[-1]).mean(0))
+            r['encoder_mean'] = to_np(cap['vision'][0].float().reshape(-1, cap['vision'].shape[-1]).mean(0)) \
                 if 'vision' in cap else np.full(1, np.nan, np.float32)
         else:
             h = self.model.config.get_text_config().hidden_size if hasattr(self.model.config, 'get_text_config') \
-                else r['post_all'].shape[0]
-            r['pre_proj_mean'] = np.full(h, np.nan, np.float32)
+                else r['prompt_mean_state'].shape[0]
+            r['projector_mean'] = np.full(h, np.nan, np.float32)
             vh = getattr(getattr(self.model.config, 'vision_config', None), 'hidden_size', 1)
-            r['pre_vision_mean'] = np.full(vh, np.nan, np.float32)
+            r['encoder_mean'] = np.full(vh, np.nan, np.float32)
         return r
 
     # ── mean swap: the projector output replaced by the cohort mean ──────────
-    def signal_mean(self, images, batch=8):
+    def signal_mean(self, images, mod=None, batch=8):
         torch = self.torch
         total, n = None, 0
         cap = {}
@@ -158,7 +158,7 @@ class HFImageTextAdapter(Adapter):
         return (total / n).cpu().numpy().astype(np.float32)
 
     @contextlib.contextmanager
-    def inject_mean(self, mean, **_):
+    def inject_mean(self, mean, mod=None, **_):
         mean_t = self.torch.from_numpy(np.asarray(mean))
 
         def swap(m, i, o):

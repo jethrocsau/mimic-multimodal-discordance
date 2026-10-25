@@ -1,96 +1,191 @@
-"""Generate a model's perturbation records: manifest -> missing records -> adapter -> store -> index.
+"""What to perturb: the perturbation strategies, and the configuration list they generate for a modality set.
 
-    plan()   records, already stored, to do, and estimated GPU-hours (from measured or given s/record)
-    smoke()  a few records end to end: shapes, signal span, Yes/No ids, answers, s/record
-    run()    every missing record, resumable, optionally one shard of n; mean-swap records run inside the
-             adapter's inject_mean() with the cohort mean computed once and saved next to the run
-             (with any extra arrays the adapter returns, e.g. OpenTSLM's label statistics)
+Every strategy replaces a SUBSET of the set's modalities and keeps the rest at the stay's own baseline record.
+Subsets run from one modality up to `max_order` modalities at once (combinations, not permutations: {x, n} is
+one input whichever order you name it), so a set of k modalities gets sum_{r=1..max_order} C(k, r) subsets.
+
+    strategy              family (tables)   the perturbed modalities become
+    ablate                ablate            none (removed from the input)
+    within_patient        temporal          the stay's own latest follow-up record
+    matched_patient       matched           a same-outcome donor's baseline record
+    matched_label_swap    counterfactual    an opposite-outcome donor's baseline record
+    cohort_mean           mean              signals: the cohort-mean encoder output; note: none
+
+Rules that keep every configuration informative:
+  - donor, mean and ablate subsets stop at k - 1 modalities: replacing every modality gives the donor's own
+    reference (or an input with no patient in it); within-patient may replace all k (the stay's later self);
+  - a joint donor swap takes every perturbed modality from the SAME donor (one donor plan per recipient);
+  - the core arms always run, whatever strategies are chosen: the reference and every "only modality m" input
+    (ablate everything else). The zoo's information share needs them.
+
+A configuration row: level_id, config (`<family>_<slot>`, e.g. counterfactual_x+n), family, slot (perturbed
+modalities joined with '+'), order (how many), core, factor (prompt factor or ''), stay_id, draw, donor, record.
 """
-import time
+import itertools
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from math import comb
+from typing import Dict, List, Sequence
 
-import numpy as np
 import pandas as pd
 
-from . import fsio
-from . import index as index_mod
-from .cohort import Manifest, parse, run_records
-from .models.base import SampleFactory
-from .store import ChunkStore, in_shard
+from .cohort import CONFIG_COLUMNS, DonorPlan, Manifest, TierCohort
+from .modsets import NOTE, ModalitySet, slot_name
+from .records import donor_slot, parse_record, record_id
 
 
-def is_mean(record: str, sig: str) -> bool:
-    return parse(record)[1].get(sig) == 'mean'
+@dataclass(frozen=True)
+class Strategy:
+    name: str                     # what you type on the command line
+    family: str                   # what the tables call it
+    donor: bool                   # draws records from the donor plan
+    whole_set: bool               # may perturb every modality of the set at once
+    becomes: str                  # what the perturbed modalities are replaced with
+
+    def max_size(self, k: int, max_order: int) -> int:
+        return min(max_order, k if self.whole_set else k - 1)
 
 
-def select(manifest: Manifest, adapter, levels=None, families=None, factors=True):
-    recs = run_records(manifest, levels, families, factors)
-    if not adapter.supports_mean:
-        sig = manifest.mods[0]
-        recs = [r for r in recs if not is_mean(r, sig)]
-    return recs
+STRATEGIES: Dict[str, Strategy] = {s.name: s for s in [
+    Strategy('ablate', 'ablate', False, False, 'removed'),
+    Strategy('within_patient', 'temporal', False, True, "the stay's own latest follow-up record"),
+    Strategy('matched_patient', 'matched', True, False, "a same-outcome donor's baseline record"),
+    Strategy('cohort_mean', 'mean', False, False, 'the cohort-mean encoder output (note: removed)'),
+    Strategy('matched_label_swap', 'counterfactual', True, False, "an opposite-outcome donor's baseline record"),
+]}
+BY_FAMILY = {s.family: s for s in STRATEGIES.values()}
+FAMILIES = [s.family for s in STRATEGIES.values()]             # table order
+DONOR_FAMILIES = [s.family for s in STRATEGIES.values() if s.donor]
+REFERENCE = 'reference'
 
 
-def plan(store: ChunkStore, records, sec_per_record=None, shard=None) -> pd.DataFrame:
-    done = store.done()
-    mine = [r for r in records if in_shard(r, shard)]
-    todo = sum(r not in done for r in mine)
-    return pd.DataFrame([dict(records=len(mine), stored=len(mine) - todo, todo=todo,
-                              est_gpu_hours=round(todo * sec_per_record / 3600, 1) if sec_per_record else None)])
+def resolve(strategies='all') -> List[Strategy]:
+    """'all' | strategy names | family names (a list, or one comma-separated string) -> strategies, in order."""
+    if isinstance(strategies, str):
+        strategies = strategies.split(',')
+    names = {n.strip() for n in strategies if n and n.strip()}
+    if not names or 'all' in names:
+        return list(STRATEGIES.values())
+    lookup = {k: s for s in STRATEGIES.values() for k in (s.name, s.family)}
+    bad = sorted(names - set(lookup))
+    if bad:
+        raise ValueError(f'unknown strategy {bad}; choose from {list(STRATEGIES)} or all')
+    chosen = {lookup[n].name for n in names}
+    return [s for s in STRATEGIES.values() if s.name in chosen]
 
 
-def smoke(adapter, factory: SampleFactory, records, n=3, verbose=True):
-    """Run n records of each arm present (signal only, note only, both) without storing anything."""
-    picked, seen = [], set()
-    for r in records:
-        sl = parse(r)[1]
-        arm = tuple(sorted(k for k, v in sl.items() if v != 'none'))
-        if arm not in seen and '~' not in r:
-            picked.append(r); seen.add(arm)
-        if len(seen) >= 3:
-            break
-    picked = (picked + [r for r in records if r not in picked])[:max(n, len(picked))]
-    rows, times = [], []
-    for r in picked:
-        s = factory(r)
-        t = time.time()
-        out = adapter.forward(s)
-        times.append(time.time() - t)
-        row = dict(record=r, seconds=round(times[-1], 2), answer=out.get('answer'), p_yes=round(float(out['p_yes']), 4),
-                   signal_span=out.get('signal_span', out.get('image_span')))
-        row.update({f'shape:{k}': np.shape(v) for k, v in out.items() if np.ndim(v) > 0})
-        rows.append(row)
-    df = pd.DataFrame(rows)
-    if verbose:
-        print(adapter.describe())
-        print(df.to_string(index=False))
-        print(f'seconds per record (median, after the first): {np.median(times[1:] or times):.2f}')
-    return df, float(np.median(times[1:] or times))
+def check_order(max_order: int, k: int) -> int:
+    max_order = int(max_order)
+    if not 1 <= max_order <= k:
+        raise ValueError(f'max_order must be between 1 and the number of modalities ({k}), got {max_order}')
+    return max_order
 
 
-def run(adapter, manifest: Manifest, store: ChunkStore, factory: SampleFactory, records, cfg,
-        shard=None, mean_signals=None, run_ref=''):
-    """Store every missing record. mean_signals: callable returning the cohort reference signals for the mean."""
-    t0 = time.time()
-    sig = manifest.mods[0]
-    plain = [r for r in records if not is_mean(r, sig)]
-    mean_recs = [r for r in records if is_mean(r, sig)]
-    fn = adapter.compute_fn(factory)
-    saved = store.run(plain, fn, chunk=cfg.chunk, shard=shard)
-    if mean_recs and adapter.supports_mean:
-        path = f'{store.dir}/cohort_mean_{sig}.npz'
-        if fsio.exists(path):
-            z = fsio.load_npz(path)
-        else:
-            sigs = [s for s in mean_signals() if s is not None]
-            m = adapter.signal_mean(sigs)
-            z = dict(m if isinstance(m, dict) else dict(mean=m), n=np.array(len(sigs)))
-            fsio.save_npz(z, path)
-            print(f'cohort-mean signal over {len(sigs)} reference signals saved: {z["mean"].shape}')
-        with adapter.inject_mean(z['mean'], **{k: v for k, v in z.items() if k not in ('mean', 'n')}):
-            saved += store.run(mean_recs, fn, chunk=cfg.chunk, shard=shard)
-    idx = index_mod.build(store, manifest.configs, run_ref)
-    index_mod.save(idx, store.dir)
-    index_mod.log_run(store.dir, **adapter.info(), cohort_hash=manifest.hash, run_ref=run_ref,
-                      shard='' if shard is None else f'{shard[0]}/{shard[1]}', saved=saved,
-                      minutes=round((time.time() - t0) / 60, 1))
-    return saved
+def subsets(mods: Sequence[str], hi: int, lo: int = 1):
+    """Every subset of `mods` with lo..hi members (combinations), smallest first."""
+    return [c for r in range(lo, hi + 1) for c in itertools.combinations(mods, r)]
+
+
+def count_configs(k: int, strategies='all', max_order: int = 2, n_draws: int = 5) -> pd.DataFrame:
+    """Configurations per recipient for each family (an upper bound: temporal needs follow-up records)."""
+    max_order = check_order(max_order, k)
+    chosen = {s.family for s in resolve(strategies)}
+    rows = [dict(family=REFERENCE, subsets=1, draws=1)]
+    for s in STRATEGIES.values():
+        hi = s.max_size(k, max_order)
+        n = sum(comb(k, r) for r in range(1, hi + 1)) if s.family in chosen else 0
+        if s.family == 'ablate' and k - 1 > (hi if s.family in chosen else 0):
+            n += k                                            # the core "only m" arms
+        if n:
+            rows.append(dict(family=s.family, subsets=n, draws=n_draws if s.donor else 1))
+    out = pd.DataFrame(rows)
+    out['configs'] = out.subsets * out.draws
+    return out
+
+
+# ── the configuration list ───────────────────────────────────────────────────
+def build_configs(cohort: TierCohort, plan: DonorPlan, strategies='all', max_order: int = 2,
+                  draws: int = None) -> pd.DataFrame:
+    """Every configuration one tier needs: one row per (config, recipient, draw)."""
+    t, mods = cohort.table, tuple(cohort.mods)
+    k = len(mods)
+    max_order = check_order(max_order, k)
+    chosen = {s.family: s for s in resolve(strategies)}
+    base = {m: 'first' for m in mods}
+    rows = []
+
+    def add(family, sub, stay, slots, draw=0, donor=None):
+        slot = slot_name(sub)
+        config = 'ref' if family == REFERENCE else f'{family}_{slot}'
+        core = family == REFERENCE or (family == 'ablate' and len(sub) == k - 1)
+        rows.append((cohort.level, config, family, slot, len(sub), core, '', int(stay), draw, donor,
+                     record_id(stay, slots)))
+
+    ablate_sets = list(dict.fromkeys(
+        (subsets(mods, STRATEGIES['ablate'].max_size(k, max_order)) if 'ablate' in chosen else [])
+        + list(itertools.combinations(mods, k - 1))))
+    own = [(fam, subsets(mods, chosen[fam].max_size(k, max_order))) for fam in ('temporal', 'mean') if fam in chosen]
+    for s in t.itertuples():
+        add(REFERENCE, (), s.stay_id, base)
+        for sub in ablate_sets:
+            add('ablate', sub, s.stay_id, {**base, **{m: 'none' for m in sub}})
+        for fam, subs in own:
+            for sub in subs:
+                if fam == 'temporal':
+                    if all(getattr(s, f'{m}_has_last') for m in sub):
+                        add(fam, sub, s.stay_id, {**base, **{m: 'last' for m in sub}})
+                else:                                         # mean: a signal gets the cohort mean, the note goes
+                    add(fam, sub, s.stay_id, {**base, **{m: 'none' if m == NOTE else 'mean' for m in sub}})
+    p = plan.plan[plan.plan.draw < (draws or plan.n_draws)]
+    for fam in DONOR_FAMILIES:
+        if fam not in chosen:
+            continue
+        subs = subsets(mods, chosen[fam].max_size(k, max_order))
+        for r in p[p.family == fam].itertuples():
+            for sub in subs:                                  # every perturbed modality from the SAME donor
+                add(fam, sub, r.recipient, {**base, **{m: donor_slot(r.donor) for m in sub}},
+                    draw=r.draw, donor=r.donor)
+    return pd.DataFrame(rows, columns=CONFIG_COLUMNS)
+
+
+def factor_configs(configs: pd.DataFrame, levels=('L1',), orders=('flip',), paras=(1, 2)) -> pd.DataFrame:
+    """Prompt-factor copies (slot order 'flip' = the other order from the model's default, and paraphrases) of
+    the reference and the single-modality counterfactual swaps of some tiers, so the factors add ~30% rather
+    than 6x. The copies carry `~order` / `~para` in the record id and `order=flip` / `para=1` in `factor`."""
+    base = configs[configs.level_id.isin(levels) & configs.factor.eq('')
+                   & ((configs.family == REFERENCE) | ((configs.family == 'counterfactual') & (configs.order == 1)))]
+    out = []
+    for kind, values in (('order', orders), ('para', paras)):
+        for v in values:
+            c = base.copy()
+            c['factor'] = f'{kind}={v}'
+            c['record'] = [record_id(*parse_record(r), options={kind: str(v)}) for r in c.record]
+            out.append(c)
+    return pd.concat(out, ignore_index=True) if out else base.iloc[:0]
+
+
+def build_manifest(cfg, modset: ModalitySet, ad: pd.DataFrame, slots: Dict[str, pd.DataFrame],
+                   donor_plan_dir: str = None, strategies=None, max_order: int = None, factors: bool = True,
+                   verbose=True) -> Manifest:
+    """Tiers, folds, donors (reused from saved plans when they match) and every configuration, for one set."""
+    strategies = [s.name for s in resolve(strategies or cfg.strategies)]
+    max_order = check_order(max_order or cfg.max_order, modset.k)
+    missing = set(modset.mods) - set(slots)
+    if missing:
+        raise ValueError(f'{modset.name}: no slot table for {sorted(missing)}')
+    slots = {m: slots[m] for m in modset.mods}
+    cohorts = {lv: TierCohort(ad, lv, slots, n_splits=cfg.n_splits) for lv in cfg.levels}
+    plan_path = lambda lv: f'{donor_plan_dir}/donor_plan_{modset.name}_{lv}.csv' if donor_plan_dir else None
+    plans = {lv: DonorPlan(c, cfg.n_draws, path=plan_path(lv), verbose=verbose) for lv, c in cohorts.items()}
+    configs = pd.concat([build_configs(c, plans[lv], strategies, max_order, draws=cfg.n_draws)
+                         for lv, c in cohorts.items()], ignore_index=True)
+    if factors:
+        configs = pd.concat([configs, factor_configs(configs[configs.draw < cfg.n_draws_model],
+                                                     levels=cfg.levels[:1])], ignore_index=True)
+    meta = dict(modset=modset.name, mods=list(modset.mods), cohort_version=cfg.cohort_version,
+                levels=list(cfg.levels), strategies=strategies, max_order=max_order, n_splits=cfg.n_splits,
+                n_draws=cfg.n_draws, n_draws_model=cfg.n_draws_model,
+                donor_plans_from={lv: plan_path(lv) for lv in cohorts} if donor_plan_dir else {},
+                created=datetime.now(timezone.utc).isoformat(timespec='seconds'),
+                hash=Manifest.digest(configs, cohorts))
+    return Manifest(modset, cohorts, plans, configs, meta)

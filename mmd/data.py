@@ -1,9 +1,16 @@
-"""The phase0 tables, the raw files behind each record, and the radiology notes.
+"""The phase0 tables, the slot tables (which record fills each modality's first / last slot), the raw files
+behind each record, and the radiology notes.
 
 Tables come from the frozen parquet snapshot in `{root}/data/<cohort_version>/` (written by `mmd data stage`
 from BigQuery, or copied from Drive by `mmd migrate drive`). Raw files (CXR JPG, ECG WFDB) are resolved as
 `{raw}/<physionet_project>/<version>/<relative_path>`, which matches the Drive `unpacked/` layout, a GCS mirror
 of it, or a PhysioNet bucket. Note text is read at run time and never written to the store.
+
+Slot rules per modality (the notebooks' rules, so existing runs keep their records):
+    x  CXR image   latest frontal baseline film (lateral only when no frontal one); optional pins
+    e  ECG         earliest baseline record
+    n  note        earliest baseline radiology report (optionally chest-radiograph reports only)
+    v, l           not built yet: vitals and labs have no record-level slot or loader
 """
 import hashlib
 import os
@@ -17,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 from . import fsio
-from .cohort import pick_slots
+from .modsets import MOD_NAMES, NOTE, ModalitySet
 
 # Every x_* table already holds the union of all levels (download/bq_export.py)
 TABLES = ["cohort", "x_stays", "stay_summary", "analysis_dataset",
@@ -67,6 +74,38 @@ def available(paths, root) -> set:
     return {p for p in paths if p in found}
 
 
+# ── slot tables: which record fills each modality's first / last slot ─────────
+def pick_slots(rows: pd.DataFrame, record_col: str, first: str = 'earliest',
+               prefer: str = None) -> pd.DataFrame:
+    """One record per stay and slot. rows: stay_id, phase, hours_from_icu_admit, record_col
+    (+ an optional boolean `prefer` column, e.g. frontal view, which wins inside a window).
+
+    first = the baseline-window record, earliest or latest (`first`);
+    last  = the latest record in the follow-up window [w_end, f_end).
+    """
+    r = rows.dropna(subset=[record_col]).copy()
+    r['_p'] = r[prefer].astype(bool) if prefer else True
+    # ties (two films of one study, two notes at one charttime) break on the record id, so every
+    # session resolves a slot to the same record whatever order the table was read in
+    by = ['stay_id', '_p', 'hours_from_icu_admit', record_col]
+    b = r[r.phase == 'baseline'].sort_values(by, ascending=[True, False, first == 'earliest', True],
+                                             kind='mergesort')
+    f = r[r.phase == 'follow_up'].sort_values(by, ascending=[True, False, False, True], kind='mergesort')
+    out = pd.DataFrame({'first': b.drop_duplicates('stay_id').set_index('stay_id')[record_col],
+                        'last': f.drop_duplicates('stay_id').set_index('stay_id')[record_col]})
+    out.index = out.index.astype('int64')
+    return out
+
+
+def apply_pins(slot_table: pd.DataFrame, pins: pd.DataFrame, record_col: str, valid=None) -> int:
+    """Pin slots to the records the stored runs actually used (slot_pins_x.csv from the S3 repair)."""
+    if valid is not None:
+        pins = pins[pins[record_col].isin(valid)]
+    for r in pins.itertuples():
+        slot_table.loc[r.stay_id, r.slot] = getattr(r, record_col)
+    return len(pins)
+
+
 def cxr_rows(tables: Tables, verbose=True):
     """One row per (stay, dicom_id) with a JPG that exists; and dicom_id -> path."""
     m = tables.file_manifest()
@@ -83,24 +122,6 @@ def cxr_rows(tables: Tables, verbose=True):
     return rows, dict(zip(rows.dicom_id, rows.local_path))
 
 
-def slots_cxr_notes(tables: Tables, note_chest_only=False, pins: pd.DataFrame = None, verbose=True):
-    """The slot tables of the CXR + note pair, with the notebooks' rules (latest frontal baseline film,
-    earliest baseline note), plus optional pins from the S3 repair."""
-    rows, image_path = cxr_rows(tables, verbose)
-    notes = tables.get('x_notes')
-    if note_chest_only:
-        notes = notes[notes.is_chest_radiograph_report]
-    slots = {'x': pick_slots(rows, 'dicom_id', first='latest', prefer='frontal'),
-             'n': pick_slots(notes[['stay_id', 'phase', 'hours_from_icu_admit', 'note_id']], 'note_id',
-                             first='earliest')}
-    if pins is not None:
-        from .cohort import apply_pins
-        n = apply_pins(slots['x'], pins, 'dicom_id', valid=set(image_path))
-        if verbose:
-            print(f'{n:,} image slots pinned')
-    return slots, image_path, notes
-
-
 def ecg_rows(tables: Tables):
     """One row per (stay, ECG record); record = the header path without `.hea`, as in the OpenTSLM notebook
     (no file-existence filter there, so none here: the cohort stays the notebook's)."""
@@ -109,37 +130,64 @@ def ecg_rows(tables: Tables):
             [['stay_id', 'phase', 'hours_from_icu_admit', 'record']])
 
 
-def slots_ecg_notes(tables: Tables, verbose=True):
-    """The slot tables of the ECG + note pair, with the OpenTSLM notebook's rules (earliest baseline ECG and note)."""
+def note_rows(tables: Tables, chest_only=False):
     notes = tables.get('x_notes')
+    if chest_only:
+        notes = notes[notes.is_chest_radiograph_report]
+    return notes[['stay_id', 'phase', 'hours_from_icu_admit', 'note_id']]
+
+
+def slots_x(tables: Tables, pins: pd.DataFrame = None, verbose=True, **_):
+    rows, image_path = cxr_rows(tables, verbose)
+    t = pick_slots(rows, 'dicom_id', first='latest', prefer='frontal')
+    if pins is not None:
+        n = apply_pins(t, pins, 'dicom_id', valid=set(image_path))
+        if verbose:
+            print(f'{n:,} image slots pinned')
+    return t
+
+
+def slots_e(tables: Tables, verbose=True, **_):
     rows = ecg_rows(tables)
     if verbose:
         print(f"{rows.record.nunique():,} ECG records in the manifest")
-    slots = {'e': pick_slots(rows, 'record', first='earliest'),
-             'n': pick_slots(notes[['stay_id', 'phase', 'hours_from_icu_admit', 'note_id']], 'note_id',
-                             first='earliest')}
-    return slots, notes
+    return pick_slots(rows, 'record', first='earliest')
 
 
-def slots_for(pair: str, tables: Tables, note_chest_only=False, pins: pd.DataFrame = None, verbose=True):
-    if pair == 'cxr_notes':
-        return slots_cxr_notes(tables, note_chest_only, pins, verbose)[0]
-    if pair == 'ecg_notes':
-        if note_chest_only or pins is not None:
-            raise ValueError('ecg_notes takes no --note-chest-only / --pins')
-        return slots_ecg_notes(tables, verbose)[0]
-    raise ValueError(f'unknown pair {pair}')
+def slots_n(tables: Tables, note_chest_only=False, **_):
+    return pick_slots(note_rows(tables, note_chest_only), 'note_id', first='earliest')
 
 
-def signal_loader(tables: Tables, sig: str):
-    """(load, path) for a pair's signal slot: slot value -> signal object, and -> file path."""
-    if sig == 'x':
+SLOT_BUILDERS = {'x': slots_x, 'e': slots_e, 'n': slots_n}
+
+
+def slots_for(modset: ModalitySet, tables: Tables, note_chest_only=False, pins: pd.DataFrame = None,
+              verbose=True) -> Dict[str, pd.DataFrame]:
+    """The slot table of every modality in the set: {mod: DataFrame(index stay_id; first, last)}."""
+    missing = [m for m in modset.mods if m not in SLOT_BUILDERS]
+    if missing:
+        raise NotImplementedError(f'{modset.name}: no slot table for {[MOD_NAMES[m] for m in missing]} yet '
+                                  f'(add a builder to data.SLOT_BUILDERS)')
+    if pins is not None and 'x' not in modset.mods:
+        raise ValueError('--pins pins CXR slots; this set has no CXR')
+    return {m: SLOT_BUILDERS[m](tables, note_chest_only=note_chest_only, pins=pins, verbose=verbose)
+            for m in modset.mods}
+
+
+def signal_loader(tables: Tables, mod: str):
+    """(load, path) for one signal modality: slot value -> signal object, and -> file path."""
+    if mod == 'x':
         _, image_path = cxr_rows(tables)
         images = ImageLoader(image_path)
         return images.load, images.path
-    if sig == 'e':
+    if mod == 'e':
         return EcgLoader().load, (lambda record: record)
-    raise ValueError(f'unknown signal slot {sig}')
+    raise NotImplementedError(f'no loader for {MOD_NAMES.get(mod, mod)} yet')
+
+
+def signal_loaders(tables: Tables, mods) -> Dict[str, tuple]:
+    """{mod: (load, path)} for every signal (non-note) modality of a set."""
+    return {m: signal_loader(tables, m) for m in mods if m != NOTE}
 
 
 class NotesLoader:

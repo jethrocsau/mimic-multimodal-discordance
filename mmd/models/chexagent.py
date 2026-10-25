@@ -6,7 +6,7 @@ copied to a local cache first. Trained with MIMIC-CXR among its data, so it is f
 
 What is not known until the smoke test runs on the VM, and is printed by describe():
   - the image-token span: taken between the tokenizer's image start / end ids when it has them (Qwen-VL style);
-    otherwise post_signal is NaN and the zoo table marks it missing;
+    otherwise signal_mean_state is NaN and the zoo table marks it missing;
   - the vision module: the first module whose name ends in 'visual' or 'vision_model'.
 The mean swap is not offered (no verified projector hook point): its mean_* configurations are skipped and the
 zoo table marks them missing rather than imputing them.
@@ -28,7 +28,7 @@ class CheXagent(Adapter):
     hf_id = 'StanfordAIMI/CheXagent-2-3b'
     revision = 'main'
     group = 'chexagent'
-    signal, pair = 'cxr', 'cxr_notes'
+    signal, modalities, default_modset = 'cxr', ('x', 'n'), 'cxr_notes'
     meta = dict(fusion='prefix (resampler)', domain='radiology', params='3B', mimic_exposure='MIMIC-CXR')
     supports_mean = False
     answer_tokens = 8
@@ -99,6 +99,6 @@ class CheXagent(Adapter):
                                       return_dict_in_generate=True)
         r = readouts_from_generate(torch, gen, ids.shape[1], self._span(ids), self.yes_ids, self.no_ids, self.tok)
         v = cap.get('vision')
-        r['pre_vision_mean'] = (v[0].float().reshape(-1, v.shape[-1]).mean(0).cpu().numpy()
+        r['encoder_mean'] = (v[0].float().reshape(-1, v.shape[-1]).mean(0).cpu().numpy()
                                 if (v is not None and sample.signal_path is not None) else np.full(1, np.nan, np.float32))
         return r

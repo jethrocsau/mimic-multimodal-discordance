@@ -2,9 +2,9 @@
 and Gemma-3-1B (same code, its own checkpoint; no notebook run to import).
 
 Runs in the `opentslm` uv group. Ported unchanged from the notebook: ModelHub.load, FusedPromptBuilder,
-AnswerExtractor (SP path), MeanEncoder (SP). It writes the same keys as the stored swap4 run
-(p_yes, ans_last, ans_emb, answer), and `keymap` renames ans_last -> post_last, the final-layer state at the
-last prompt position ("Answer:").
+AnswerExtractor (SP path), MeanEncoder (SP). It writes yes_probability, prompt_last_state (the final-layer state at
+the last prompt position, "Answer:"), answer_mean_state and answer_text; the notebook-era chunks stored
+p_yes / ans_last / ans_emb / answer, renamed on load (`keymap` and store.NOTEBOOK_KEYS).
 
 The prompt is this model's own (the one its stored records used), not the shared wording in prompts.py:
 the report sits in the clinical-context block, BEFORE the series. So `~order=flip` moves the report after the
@@ -15,10 +15,10 @@ Differences from the notebook pass, both numerical only:
     ones in the last float digits;
   - none in the cohort: slot tables, donors and records come from the same manifest.
 
-Pre-fusion readouts come from the notebook's separate single-ECG runs (prefix_mean of the SP run, media of the
-Flamingo run), registered with `mmd index import --lookup sp-prefix=<dir> --lookup flamingo=<dir>` and looked
-up by the ECG in the slot. A model without such a run (Gemma) stores `prefix_mean` itself in every record that
-has an ECG, and the ECG prefix mean is looked up from its own run instead.
+Pre-fusion embeddings come from the notebook's separate single-ECG runs (prefix_mean of the SP run, read as
+projector_mean; media of the Flamingo run), registered with `mmd index import --lookup sp-prefix=<dir> --lookup
+flamingo=<dir>` and looked up by the ECG in the slot. A model without such a run (Gemma) stores `projector_mean`
+itself in every record that has an ECG, and the ECG projector mean is looked up from its own run instead.
 """
 import contextlib
 import dataclasses
@@ -26,7 +26,7 @@ import dataclasses
 import numpy as np
 
 from .. import fsio, prompts
-from .base import Adapter, Sample, register
+from .base import Adapter, ReadoutSpec, Sample, register
 
 
 class FusedPromptBuilder:
@@ -88,21 +88,21 @@ class OpenTSLMSP(Adapter):
     hf_id = 'OpenTSLM/llama-3.2-1b-ecg-sp'
     revision = 'main'
     group = 'opentslm'
-    signal, pair = 'ecg', 'ecg_notes'
+    signal, modalities, default_modset = 'ecg', ('e', 'n'), 'ecg_notes'
     meta = dict(fusion='prefix (soft prompt)', domain='time series', params='1B', mimic_exposure='none',
                 base='llama-3.2-1b')
-    keymap = {'ans_last': 'post_last'}
-    readouts = [('answer P(Yes) (SP)', 'post-fusion', 'p_yes', None),
-                ('answer embedding (SP)', 'post-fusion', 'ans_emb', 'pca'),
-                ('state at Answer: (SP)', 'post-fusion', 'post_last', 'pca')]
-    lookups = [('ECG prefix mean', 'pre-fusion', 'prefix_mean', 'sp-prefix'),
+    keymap = {'ans_last': 'prompt_last_state'}
+    readouts = [ReadoutSpec('yes probability (SP)', 'post-fusion', 'yes_probability'),
+                ReadoutSpec('answer mean state (SP)', 'post-fusion', 'answer_mean_state', 'pca'),
+                ReadoutSpec('prompt last state (SP)', 'post-fusion', 'prompt_last_state', 'pca')]
+    lookups = [('ECG projector mean', 'pre-fusion', 'projector_mean', 'sp-prefix'),
                ('ECG Flamingo mean', 'cross-attention', 'media', 'flamingo')]
-    note_blind = ('ECG prefix mean', 'ECG Flamingo mean')
+    note_blind = ('ECG projector mean', 'ECG Flamingo mean')
     supports_mean = True
     default_order = 'note first'
     kind = 'sp'
     answer_tokens = 8
-    store_prefix = False                         # True: forward() also writes prefix_mean (H,), the projector
+    store_prefix = False                         # True: forward() also writes projector_mean (H,), the projector
                                                  # output averaged over leads and patches
 
     def load(self, device='cuda'):
@@ -177,15 +177,15 @@ class OpenTSLMSP(Adapter):
         else:
             ans_emb = ans_last
         cpu = lambda t: t[0].float().cpu().numpy()
-        out = dict(p_yes=float(p_yes[0]), ans_last=cpu(ans_last), ans_emb=cpu(ans_emb),
-                   answer=self.tok.batch_decode(gen_ids, skip_special_tokens=True)[0].strip())
+        out = dict(yes_probability=float(p_yes[0]), prompt_last_state=cpu(ans_last), answer_mean_state=cpu(ans_emb),
+                   answer_text=self.tok.batch_decode(gen_ids, skip_special_tokens=True)[0].strip())
         if self.store_prefix:                    # (K, P, H) for the record's leads; NaN when there is no ECG
-            out['prefix_mean'] = (proj[0].reshape(-1, proj[0].shape[-1]).mean(0).cpu().numpy() if proj
+            out['projector_mean'] = (proj[0].reshape(-1, proj[0].shape[-1]).mean(0).cpu().numpy() if proj
                                   else np.full(self.hidden, np.nan, np.float32))
         return out
 
     # ── mean swap (MeanEncoder, SP) ──────────────────────────────────────────
-    def signal_mean(self, bundles, batch=8):
+    def signal_mean(self, bundles, mod=None, batch=8):
         """Mean projector output (K, P, H) over the cohort reference ECGs, plus the mean per-lead statistics the
         label text quotes for a mean record."""
         torch = self.torch
@@ -211,7 +211,7 @@ class OpenTSLMSP(Adapter):
                     stat_std=np.mean([s[1] for s in stats], 0).astype(np.float32))
 
     @contextlib.contextmanager
-    def inject_mean(self, mean, stat_mean=None, stat_std=None, **_):
+    def inject_mean(self, mean, mod=None, stat_mean=None, stat_std=None, **_):
         if stat_mean is None or stat_std is None:
             raise ValueError('opentslm: the cohort mean needs stat_mean / stat_std (the label text)')
         mean_t = self.torch.from_numpy(np.asarray(mean))
@@ -233,23 +233,22 @@ class OpenTSLMSP(Adapter):
     def extra_readouts(cls, cfg, manifest, store, run_dir):
         """The notebook's _pre readouts: per-ECG vectors (mean over patches) from the single-modality runs,
         looked up by the ECG in the slot; the mean slot gets the average over the cohort reference ECGs."""
-        from ..analysis.probe import LookupReadout, path_key
-        from ..store import ChunkStore
+        from ..analysis.probe import Embeddings, path_key
+        from ..store import EmbeddingStore
         src = f'{run_dir}/sources.json'
         dirs = fsio.read_json(src).get('lookups', {}) if fsio.exists(src) else {}
-        res = manifest.resolver
         need = {path_key(d, cfg.raw): d for c in manifest.cohorts.values()
                 for col in ('e_first', 'e_last') for d in c.table[col].dropna()}
         ref = {path_key(d, cfg.raw) for c in manifest.cohorts.values() for d in c.table.e_first}
         out = []
         for name, family, key, source in cls.lookups:
-            if source not in dirs and cls.store_prefix and key == 'prefix_mean':
+            if source not in dirs and cls.store_prefix and key == 'projector_mean':
                 out += cls._own_prefix(manifest, store, name, family)
                 continue
             if source not in dirs:
                 print(f'  readout {name}: no `{source}` lookup run registered (mmd index import --lookup), skipped')
                 continue
-            lk = ChunkStore(dirs[source])
+            lk = EmbeddingStore(dirs[source])
             have = [r for r in lk.done() if path_key(r, cfg.raw) in need]
             run = lk.load(keys=[key], records=set(have))
             if run is None:
@@ -259,43 +258,33 @@ class OpenTSLMSP(Adapter):
             # Python set, whose order moves the last float32 digits)
             mean_vec = np.mean([vec[d].astype(np.float64) for d in sorted(vec) if path_key(d, cfg.raw) in ref],
                                0).astype(np.float32)
-            out.append(LookupReadout(name, family, res, 'e', vec, mean_vec=mean_vec))
+            out.append(Embeddings.from_lookup(name, family, manifest, 'e', vec, mean_vec=mean_vec))
         return out
 
     @staticmethod
     def _own_prefix(manifest, store, name, family):
-        """The ECG prefix mean from this model's own records (any record whose ECG slot holds a real ECG)."""
-        from ..analysis.probe import LookupReadout, vectors_by_slot
-        from ..analysis.report import standard_configs
-        run = store.load(keys=['prefix_mean'], records=set(standard_configs(manifest).record))
-        if run is None or 'prefix_mean' not in run:
-            print(f'  readout {name}: prefix_mean not stored, skipped')
+        """The ECG projector mean from this model's own records (any record whose ECG slot holds a real ECG)."""
+        from ..analysis.probe import Embeddings, vectors_by_slot
+        run = store.load(keys=['projector_mean'], records=set(manifest.analysis_configs().record))
+        if run is None or 'projector_mean' not in run:
+            print(f'  readout {name}: projector_mean not stored, skipped')
             return []
-        res = manifest.resolver
-        vec = vectors_by_slot(run, res, 'e', ['prefix_mean'])['prefix_mean']
+        vec = vectors_by_slot(run, manifest, 'e', ['projector_mean'])['projector_mean']
         ref = sorted({d for c in manifest.cohorts.values() for d in c.table.e_first if d in vec})
         mean_vec = np.mean([vec[d].astype(np.float64) for d in ref], 0).astype(np.float32)
-        return [LookupReadout(name, family, res, 'e', vec, mean_vec=mean_vec)]
+        return [Embeddings.from_lookup(name, family, manifest, 'e', vec, mean_vec=mean_vec)]
 
 
 @register
 class OpenTSLMSPGemma(OpenTSLMSP):
     """The same SP pipeline on OpenTSLM's Gemma-3-1B ECG checkpoint (base google/gemma-3-1b-pt: accept its terms
-    on Hugging Face first). No legacy run: every record is generated, and the ECG prefix mean comes from its own
+    on Hugging Face first). No legacy run: every record is generated, and the ECG projector mean comes from its own
     records. No Flamingo lookup (OpenTSLM's Gemma Flamingo checkpoint has no single-ECG run here)."""
     name = 'opentslm-sp-gemma'
     hf_id = 'OpenTSLM/gemma-3-1b-pt-ecg-sp'
     meta = dict(fusion='prefix (soft prompt)', domain='time series', params='1B', mimic_exposure='none',
                 base='gemma-3-1b-pt')
     keymap = {}
-    readouts = [('answer P(Yes) (SP)', 'post-fusion', 'p_yes', None),
-                ('answer embedding (SP)', 'post-fusion', 'ans_emb', 'pca'),
-                ('state at Answer: (SP)', 'post-fusion', 'post_last', 'pca')]
-    lookups = [('ECG prefix mean', 'pre-fusion', 'prefix_mean', 'sp-prefix')]
-    note_blind = ('ECG prefix mean',)
+    lookups = [('ECG projector mean', 'pre-fusion', 'projector_mean', 'sp-prefix')]
+    note_blind = ('ECG projector mean',)
     store_prefix = True
-
-    def forward(self, sample: Sample) -> dict:
-        out = super().forward(sample)
-        out['post_last'] = out.pop('ans_last')   # common name from the start (no legacy records to match)
-        return out

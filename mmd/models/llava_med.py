@@ -1,14 +1,14 @@
 """LLaVA-Med v1.5 (Mistral-7B): port of the notebook's LlavaHub / LlavaExtractor / MeanProjector, unchanged.
 
 Runs in the `llava-med` uv group, after `mmd setup llava-med` (the LLaVA-Med repo at a pinned commit, no deps).
-It writes the same keys as the existing runs (post_image, vision_*, proj_*), and `keymap` renames them to the
-common names on load, so legacy and new records sit in one store and one analysis.
+It writes the common names; `keymap` renames the keys the notebook's chunks use (post_image, vision_*, proj_*)
+on load, so imported notebook records and new records sit in one store and one analysis.
 
 One record at a time (no padding questions at all), one prefill, then a short greedy continuation:
-    vision_mean / vision_grid   CLIP patch features (576, Cv): mean, and pooled to grid x grid
-    proj_mean / proj_grid       mm_projector output (576, H): the soft tokens entering the LLM
-    post_last / post_image / post_all   final-layer prompt states: last / image span / all positions
-    p_yes, ans_emb, answer, image_span
+    encoder_mean / encoder_grid       CLIP patch features (576, Cv): mean, and pooled to grid x grid
+    projector_mean / projector_grid   mm_projector output (576, H): the soft tokens entering the LLM
+    prompt_last_state / signal_mean_state / prompt_mean_state   final-layer prompt states: last / image span / all
+    yes_probability, answer_mean_state, answer_text, signal_span
 Hooks run in registration order and each sees the previous hook's output, so when inject_mean() is active
 (registered first) the projector readout recorded here IS the injected mean.
 """
@@ -30,15 +30,11 @@ class LlavaMed(Adapter):
     name = 'llava-med'
     hf_id = 'microsoft/llava-med-v1.5-mistral-7b'
     group = 'llava-med'
-    signal, pair = 'cxr', 'cxr_notes'
+    signal, modalities, default_modset = 'cxr', ('x', 'n'), 'cxr_notes'
     meta = dict(fusion='prefix (projector)', domain='medical', params='7B', mimic_exposure='none')
-    keymap = {'post_image': 'post_signal', 'vision_mean': 'pre_vision_mean', 'vision_grid': 'pre_vision_grid',
-              'proj_mean': 'pre_proj_mean', 'proj_grid': 'pre_proj_grid'}
-    readouts = [('answer P(Yes)', 'post-fusion', 'p_yes', None),
-                ('answer embedding', 'post-fusion', 'ans_emb', 'pca'),
-                ('post_all', 'post-fusion', 'post_all', 'pca'),
-                ('post_image', 'post-fusion', 'post_signal', 'pca')]
-    note_blind = ('post_image', 'CXR vision mean', 'CXR projector mean')
+    keymap = {'post_image': 'signal_mean_state', 'vision_mean': 'encoder_mean', 'vision_grid': 'encoder_grid',
+              'proj_mean': 'projector_mean', 'proj_grid': 'projector_grid', 'image_span': 'signal_span'}
+    note_blind = ('signal mean state', 'CXR encoder mean', 'CXR projector mean')
     supports_mean = True
     conv_mode = 'mistral_instruct'
     load_4bit = False
@@ -157,46 +153,46 @@ class LlavaMed(Adapter):
                 past, nxt = o.past_key_values, int(o.logits[0, -1].argmax())
             nan = lambda *s: torch.full(s, float('nan'))
             g2 = GRID ** 2
-            r = dict(p_yes=float(p_yes), post_last=hs[-1].cpu(), post_all=hs.mean(0).cpu(),
-                     post_image=hs[span[0]:span[1]].mean(0).cpu() if span else nan(self.h),
-                     ans_emb=(torch.stack(states).mean(0) if states else hs[-1]).cpu(),
-                     answer=self.tok.decode(gen, skip_special_tokens=True).strip(),
-                     image_span=(span[1] - span[0]) if span else 0)
+            r = dict(yes_probability=float(p_yes), prompt_last_state=hs[-1].cpu(), prompt_mean_state=hs.mean(0).cpu(),
+                     signal_mean_state=hs[span[0]:span[1]].mean(0).cpu() if span else nan(self.h),
+                     answer_mean_state=(torch.stack(states).mean(0) if states else hs[-1]).cpu(),
+                     answer_text=self.tok.decode(gen, skip_special_tokens=True).strip(),
+                     signal_span=(span[1] - span[0]) if span else 0)
             if image is not None:
                 v, p = cap['vision'][0].float(), cap['proj'][0].float()
-                r.update(vision_mean=v.mean(0).cpu(), vision_grid=self._grid(v).cpu(),
-                         proj_mean=p.mean(0).cpu(), proj_grid=self._grid(p).cpu())
+                r.update(encoder_mean=v.mean(0).cpu(), encoder_grid=self._grid(v).cpu(),
+                         projector_mean=p.mean(0).cpu(), projector_grid=self._grid(p).cpu())
             else:
-                r.update(vision_mean=nan(self.cv), vision_grid=nan(g2, self.cv),
-                         proj_mean=nan(self.h), proj_grid=nan(g2, self.h))
+                r.update(encoder_mean=nan(self.cv), encoder_grid=nan(g2, self.cv),
+                         projector_mean=nan(self.h), projector_grid=nan(g2, self.h))
         return {k: (v.numpy() if hasattr(v, 'numpy') else v) for k, v in r.items()}
 
     # ── pre-fusion lookups (the notebook's PRE readouts) ─────────────────────
     @classmethod
     def extra_readouts(cls, cfg, manifest, store, run_dir):
-        """CXR vision / projector means looked up by the image in the slot, scored on every donor draw. The mean
-        slot gets the reference-image average (vision) and the injected cohort mean (projector)."""
+        """CXR encoder / projector means looked up by the image in the slot, scored on every donor draw. The mean
+        slot gets the reference-image average (encoder) and the injected cohort mean (projector)."""
         from .. import fsio
-        from ..analysis.probe import LookupReadout, vectors_by_slot
-        from ..analysis.report import standard_configs
-        run = store.load(keys=['pre_vision_mean', 'pre_proj_mean'], records=set(standard_configs(manifest).record))
-        if run is None or 'pre_vision_mean' not in run:
+        from ..analysis.probe import Embeddings, vectors_by_slot
+        from ..runner import mean_path
+        run = store.load(keys=['encoder_mean', 'projector_mean'], records=set(manifest.analysis_configs().record))
+        if run is None or 'encoder_mean' not in run:
             return []
-        res = manifest.resolver
-        v = vectors_by_slot(run, res, 'x', ['pre_vision_mean', 'pre_proj_mean'])
-        vis, prj = v['pre_vision_mean'], v['pre_proj_mean']
-        ref = [d for c in manifest.cohorts.values() for d in c.table.x_first if d in vis]
-        path = f'{run_dir}/cohort_mean_x.npz'
+        v = vectors_by_slot(run, manifest, 'x', ['encoder_mean', 'projector_mean'])
+        enc, prj = v['encoder_mean'], v['projector_mean']
+        ref = [d for c in manifest.cohorts.values() for d in c.table.x_first if d in enc]
+        path = mean_path(run_dir, 'x', manifest.name)
         if fsio.exists(path):
             proj_mean = fsio.load_npz(path)['mean'].mean(0)
         else:
             print(f'  {path} not found: projector mean slot uses the reference-image average')
             proj_mean = np.mean([prj[d] for d in ref], 0)
-        return [LookupReadout('CXR vision mean', 'pre-fusion', res, 'x', vis, mean_vec=np.mean([vis[d] for d in ref], 0)),
-                LookupReadout('CXR projector mean', 'projector', res, 'x', prj, mean_vec=proj_mean)]
+        return [Embeddings.from_lookup('CXR encoder mean', 'pre-fusion', manifest, 'x', enc,
+                                       mean_vec=np.mean([enc[d] for d in ref], 0)),
+                Embeddings.from_lookup('CXR projector mean', 'projector', manifest, 'x', prj, mean_vec=proj_mean)]
 
     # ── mean swap (MeanProjector) ────────────────────────────────────────────
-    def signal_mean(self, images, batch=16):
+    def signal_mean(self, images, mod=None, batch=16):
         """Mean projector output (576 x H) over the cohort reference images (encode_images only)."""
         torch = self.torch
         total, n = None, 0
@@ -212,7 +208,7 @@ class LlavaMed(Adapter):
         return (total / n).cpu().numpy().astype(np.float32)
 
     @contextlib.contextmanager
-    def inject_mean(self, mean, **_):
+    def inject_mean(self, mean, mod=None, **_):
         mean_t = self.torch.from_numpy(np.asarray(mean))
 
         def swap(m, i, o):

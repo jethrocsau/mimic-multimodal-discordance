@@ -12,6 +12,6 @@ class MedGemma4B(HFImageTextAdapter):
     name = 'medgemma-4b'
     hf_id = 'google/medgemma-4b-it'
     revision = 'main'                 # pin a commit once the smoke test passes
-    signal, pair = 'cxr', 'cxr_notes'
+    signal, modalities, default_modset = 'cxr', ('x', 'n'), 'cxr_notes'
     meta = dict(fusion='prefix (projector)', domain='medical', params='4B', mimic_exposure='MIMIC-CXR')
     torch_dtype = 'bfloat16'
