@@ -3,7 +3,6 @@ mmd/config.py); --cohort overrides the cohort version, --define adds modality se
 
     mmd setup check | setup llava-med
     mmd data stage
-    mmd migrate drive --src <Drive folder>
     mmd modsets [--define cxr_ecg_notes=e,x,n] [--strategies ...] [--max-order 2]
     mmd cohort build --modset cxr_notes [--strategies all] [--max-order 2] [--donor-plans <dir>] [--pins <csv>]
     mmd index import --model llava-med --run-folder <notebook run> [--mean-from <npz>] [--lookup name=<dir>]
@@ -18,7 +17,6 @@ mmd/config.py); --cohort overrides the cohort version, --define adds modality se
 
 Strategies: ablate, within_patient, matched_patient, matched_label_swap, cohort_mean, or all.
 """
-import os
 import subprocess
 from typing import List, Optional
 
@@ -28,12 +26,11 @@ from . import config as config_mod
 from . import fsio
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
-setup_app, data_app, migrate_app, cohort_app, index_app, weights_app, bq_app = (
-    typer.Typer(no_args_is_help=True) for _ in range(7))
+setup_app, data_app, cohort_app, index_app, weights_app, bq_app = (
+    typer.Typer(no_args_is_help=True) for _ in range(6))
 for name, sub, text in (
         ('setup', setup_app, 'check settings and access; install LLaVA-Med code'),
         ('data', data_app, 'step 1: snapshot the phase0 BigQuery tables'),
-        ('migrate', migrate_app, 'step 1: copy tables and notebook embeddings from Google Drive'),
         ('cohort', cohort_app, 'step 1: build the frozen cohort manifest of a modality set'),
         ('index', index_app, "step 2: register a notebook run's embeddings with a model"),
         ('weights', weights_app, 'step 2: stage pinned model weights'),
@@ -113,37 +110,12 @@ def setup_llava(commit: str = typer.Option(None, help='LLaVA-Med commit the exis
     _sh(['uv', 'pip', 'install', '--no-deps', f'git+https://github.com/microsoft/LLaVA-Med.git@{ref}'])
 
 
-# ── data and migration ───────────────────────────────────────────────────────
+# ── data ───────────────────────────────────────────────────────
 @data_app.command('stage')
 def data_stage(cohort: Optional[str] = CohortOpt):
     """BigQuery phase0 tables -> parquet snapshot under {root}/data/<cohort_version>/."""
     from .data import stage
     stage(_cfg(cohort))
-
-
-@migrate_app.command('drive')
-def migrate_drive(src: str = typer.Option(..., help="Drive's mimic_mmd folder, e.g. /content/drive/MyDrive/mimic_mmd"),
-                  cohort: Optional[str] = CohortOpt,
-                  raw: bool = typer.Option(False, help='also copy unpacked/ (only if PhysioNet buckets are not readable)'),
-                  dry_run: bool = typer.Option(False, '--dry-run')):
-    """Copy (never delete) embeddings/ and tables/ from Drive to the bucket with resumable rsync, then verify."""
-    cfg = _cfg(cohort)
-    pairs = [(f'{src}/embeddings', f'{cfg.root}/emb/legacy'), (f'{src}/tables', cfg.data_dir())]
-    if raw:
-        pairs.append((f'{src}/unpacked', cfg.raw))
-    for a, b in pairs:
-        if not os.path.isdir(a):
-            print(f'! {a} not found, skipped'); continue
-        _sh(['du', '-sh', a], check=False)
-        _sh(['gcloud', 'storage', 'rsync', '-r'] + (['--dry-run'] if dry_run else []) + [a, b])
-    if dry_run:
-        return
-    for a, b in pairs:
-        if not os.path.isdir(a):
-            continue
-        n_local = sum(len(f) for _, _, f in os.walk(a))
-        n_remote = len([p for p in fsio.fs_of(b).find(b)])
-        print(f'{"ok" if n_remote >= n_local else "MISMATCH"}: {a} {n_local:,} files -> {b} {n_remote:,} objects')
 
 
 # ── modality sets and the cohort manifest ────────────────────────────────────

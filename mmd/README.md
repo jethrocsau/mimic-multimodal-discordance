@@ -140,9 +140,10 @@ uv run mmd modsets                      # sets, which models can run each, input
 ### Step 1: define
 ```bash
 uv run mmd data stage                   # phase0 BigQuery tables -> data/v1/*.parquet
-# or, from Colab with Drive mounted (also copies the notebooks' embeddings to emb/legacy/):
-uv run mmd migrate drive --src /content/drive/MyDrive/mimic_mmd [--raw] [--dry-run]
 ```
+Coming from the notebooks? Copy their Drive folder into the bucket once with `gcloud storage rsync` (no mmd command
+needed): `mimic_mmd/embeddings/` → `emb/legacy/`, `tables/` → `data/v1/` (then `data stage` is not needed), and the
+extracted raw files → `physionet/`. Skip Google Sheets / Docs files (`--exclude='.*\.(gsheet|gdoc)$'`).
 Upload the CXR JPGs / ECG files to `raw_root` **before** building a CXR cohort, because only images that exist are used. For the two original sets, build from the notebooks' donor plans and pins, so the records match the notebooks' embeddings:
 ```bash
 uv run mmd cohort build --modset cxr_notes \
@@ -153,7 +154,7 @@ uv run mmd cohort build --modset cxr_ecg_notes --strategies all --max-order 2   
 ```
 
 ### Step 2a: register the notebooks' embeddings (no GPU)
-Each notebook run folder, copied to `emb/legacy/` by `migrate drive`, is registered read-only with its model. Its records then count and are never regenerated:
+Each notebook run folder, copied to `emb/legacy/`, is registered read-only with its model. Its records then count and are never regenerated:
 ```bash
 uv run mmd index import --model llava-med \
     --run-folder gs://<bucket>/emb/legacy/llava-med-v1.5-cxr-notes \
@@ -216,7 +217,7 @@ physionet/<project>/<version>/...             raw CXR JPG / ECG files (you uploa
 data/<version>/*.parquet                      phase0 snapshot                          ← data stage
 cohort/<version>/<set>/                       slots, tiers + folds, donor plans,       ← cohort build
                                               configs, manifest.json (hash)
-emb/legacy/…                                  the notebooks' runs, read only           ← migrate drive
+emb/legacy/…                                  the notebooks' runs, read only           ← one-off copy from Drive
 emb/<version>/<model>/                        chunk_*.npz (+ .records.txt), index,     ← perturb / index import
                                               runs.parquet, manifest.json (hash per set),
                                               cohort_mean_<mod>_<set>.npz, sources.json

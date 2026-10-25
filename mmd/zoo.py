@@ -98,7 +98,7 @@ class Zoo:
     # ── run: records -> adapter -> store ─────────────────────────────────────
     def import_notebook_run(self, model: str, run_folder: str, modset=None, mean_from=None,
                             lookups: Iterable[str] = ()):
-        """Register a notebook run folder (copied from Drive by `migrate drive`) as a read-only source of a model and
+        """Register a notebook run folder (copied from Drive to emb/legacy/) as a read-only source of a model and
         index it, so its stored embeddings count and are never regenerated. Nothing is written into the folder."""
         A, ms = self.check(model, modset)
         run_dir = self.cfg.emb_dir(model)
