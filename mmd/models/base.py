@@ -32,7 +32,7 @@ from ..records import parse_options, parse_record
 COMMON = ('yes_probability', 'prompt_last_state', 'prompt_mean_state', 'signal_mean_state', 'answer_mean_state',
           'answer_text')
 REGISTRY: Dict[str, type] = {}
-MODULES = {'llava-med': 'llava_med', 'medgemma-4b': 'medgemma', 'chexagent': 'chexagent',
+MODULES = {'llava-med': 'llava_med', 'gemma3-4b': 'gemma', 'qwen2.5-vl-7b': 'qwen_vl',
            'opentslm-sp': 'opentslm', 'opentslm-sp-gemma': 'opentslm'}   # model name -> module under mmd.models
 
 

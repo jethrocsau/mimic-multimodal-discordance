@@ -3,9 +3,9 @@
     zoo = Zoo(config.load(), specs=['cxr_ecg_notes=e,x,n'])
     zoo.compatibility()                                  which model can run which modality set, records / recipient
     zoo.build_cohort('cxr_notes')                        define: frozen manifest (perturb.build_manifest)
-    zoo.perturb('medgemma-4b', 'cxr_notes')              run:    records -> adapter -> store (runner), GPU
-    zoo.analyse('medgemma-4b', 'cxr_notes')              analyse: probe -> effects -> charts (analysis.report)
-    zoo.table(['llava-med', 'medgemma-4b'], 'cxr_notes') compare: information vs reliance per modality
+    zoo.perturb('gemma3-4b', 'cxr_notes')                run:    records -> adapter -> store (runner), GPU
+    zoo.analyse('gemma3-4b', 'cxr_notes')                analyse: probe -> effects -> charts (analysis.report)
+    zoo.table(['llava-med', 'gemma3-4b'], 'cxr_notes')   compare: information vs reliance per modality
     zoo.collect()                                        stack every model x set's tables
 
 A model is any registered Adapter (models.base): it declares the modalities it takes, and runs every modality set
@@ -224,6 +224,17 @@ class Zoo:
                 rows.append(dict(model=name, family=fam, records=g.record.nunique(),
                                  stored=len(set(g.record) & have)))
         return pd.DataFrame(rows)
+
+    def compare_notebook(self, model: str, notebook_dir: str, modset=None) -> pd.DataFrame:
+        """Check this model's analyse tables against the notebook's swap4_* CSVs in notebook_dir; the comparison is
+        also saved as notebook_comparison.csv next to the results."""
+        from .analysis.compare import compare_notebook
+        _, ms = self.check(model, modset)
+        out_dir = self.cfg.results_dir(model, ms.name)
+        tab = compare_notebook(out_dir, notebook_dir, ms)
+        if len(tab):
+            fsio.write_csv(tab, f'{out_dir}/notebook_comparison.csv')
+        return tab
 
     # ── compare ──────────────────────────────────────────────────────────────
     def load_results(self, model: str, modset: str):

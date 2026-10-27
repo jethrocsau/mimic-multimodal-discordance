@@ -7,4 +7,5 @@
     stats.py     helpers: Wilcoxon, stratified bootstrap, rank AUROC
     charts.py    the figures drawn from the effect tables
     report.py    analyse_model(): probe -> effects -> charts, and writes the tables (called by zoo.Zoo.analyse)
+    compare.py   compare_notebook(): the tables against the notebooks' swap4_*.csv (mmd compare-notebook)
 """

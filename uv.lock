@@ -2,24 +2,14 @@ version = 1
 revision = 5
 requires-python = "==3.12.*"
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
 ]
 supported-markers = [
     "sys_platform == 'linux'",
     "sys_platform == 'darwin'",
 ]
 conflicts = [[
-    { package = "mmd", group = "chexagent" },
     { package = "mmd", group = "hf-modern" },
     { package = "mmd", group = "llava-med" },
     { package = "mmd", group = "opentslm" },
@@ -52,13 +42,8 @@ name = "accelerate"
 version = "1.15.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
 ]
 dependencies = [
     { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" } },
@@ -128,38 +113,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/61/62/06741b579156360248d1ec624842ad0edf697050bbaf7c3e46394e106ad1/aiosignal-1.4.0.tar.gz", hash = "sha256:f47eecd9468083c2029cc99945502cb7708b082c232f9aca65da147157b251c7", size = 25007, upload-time = "2025-07-03T22:54:43.528Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/76/641ae371508676492379f16e2fa48f4e2c11741bd63c48be4b12a6b09cba/aiosignal-1.4.0-py3-none-any.whl", hash = "sha256:053243f8b92b990551949e63930a839ff0cf0b0ebbe0597b0f3fb19e1a0fe82e", size = 7490, upload-time = "2025-07-03T22:54:42.156Z" },
-]
-
-[[package]]
-name = "albucore"
-version = "0.0.24"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" } },
-    { name = "opencv-python-headless" },
-    { name = "simsimd" },
-    { name = "stringzilla" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/13/69/d4cbcf2a5768bf91cd14ffef783520458431e5d2b22fbc08418d3ba09a88/albucore-0.0.24.tar.gz", hash = "sha256:f2cab5431fadf94abf87fd0c89d9f59046e49fe5de34afea8f89bc8390253746", size = 16981, upload-time = "2025-03-09T18:46:51.409Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/e2/91f145e1f32428e9e1f21f46a7022ffe63d11f549ee55c3b9265ff5207fc/albucore-0.0.24-py3-none-any.whl", hash = "sha256:adef6e434e50e22c2ee127b7a3e71f2e35fa088bcf54431e18970b62d97d0005", size = 15372, upload-time = "2025-03-09T18:46:50.177Z" },
-]
-
-[[package]]
-name = "albumentations"
-version = "2.0.8"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "albucore" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" } },
-    { name = "opencv-python-headless" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "scipy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/f4/85eb56c3217b53bcfc2d12e840a0b18ca60902086321cafa5a730f9c0470/albumentations-2.0.8.tar.gz", hash = "sha256:4da95e658e490de3c34af8fcdffed09e36aa8a4edd06ca9f9e7e3ea0b0b16856", size = 354460, upload-time = "2025-05-27T21:23:17.415Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/64/013409c451a44b61310fb757af4527f3de57fc98a00f40448de28b864290/albumentations-2.0.8-py3-none-any.whl", hash = "sha256:c4c4259aaf04a7386ad85c7fdcb73c6c7146ca3057446b745cc035805acb1017", size = 369423, upload-time = "2025-05-27T21:23:15.609Z" },
 ]
 
 [[package]]
@@ -313,8 +266,8 @@ name = "contourpy"
 version = "1.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/58/01/1253e6698a07380cd31a736d248a3f2a50a7c88779a1813da27503cadc2a/contourpy-1.3.3.tar.gz", hash = "sha256:083e12155b210502d0bca491432bb04d56dc3432f95a979b429f2848c3dbe880", size = 13466174, upload-time = "2025-07-26T12:03:12.549Z" }
 wheels = [
@@ -380,7 +333,7 @@ name = "cuda-bindings"
 version = "13.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cuda-pathfinder", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "cuda-pathfinder", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d7/38/87909f62598d02d9e5c536326aed1755f6bfa190285507b962bb601e0005/cuda_bindings-13.4.4-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b346bfe1dda49537537c06cc4727b2210d949d8aee883cb591bca46581629d00", size = 6488222, upload-time = "2026-10-14T12:35:20.703Z" },
@@ -405,43 +358,43 @@ wheels = [
 
 [package.optional-dependencies]
 cublas = [
-    { name = "nvidia-cublas", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cuda-nvrtc", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cublas", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cuda-nvrtc", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 cudart = [
-    { name = "nvidia-cuda-runtime", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cuda-runtime", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 cufft = [
-    { name = "nvidia-cufft", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cufft", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 cufile = [
-    { name = "nvidia-cufile", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cufile", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 cupti = [
-    { name = "nvidia-cuda-cupti", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cuda-cupti", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 curand = [
-    { name = "nvidia-curand", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-curand", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 cusolver = [
-    { name = "nvidia-cublas", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cusolver", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cusparse", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cublas", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cusolver", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cusparse", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 cusparse = [
-    { name = "nvidia-cusparse", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cusparse", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 nvjitlink = [
-    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 nvrtc = [
-    { name = "nvidia-cuda-nvrtc", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cuda-nvrtc", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 nvtx = [
-    { name = "nvidia-nvtx", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvtx", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 
 [[package]]
@@ -477,7 +430,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "dill" },
-    { name = "fsspec", extra = ["http"], marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "fsspec", extra = ["http"], marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
     { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" } },
     { name = "multiprocess" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" } },
@@ -499,12 +452,12 @@ name = "db-dtypes"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
     { name = "packaging" },
     { name = "pandas" },
-    { name = "pyarrow", version = "17.0.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "pyarrow", version = "26.0.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "pyarrow", version = "17.0.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "pyarrow", version = "26.0.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/53/cf/1f80be231dea89b2f10f0573b3872d26739da54a21f6a9f6c7fc64826865/db_dtypes-1.8.0.tar.gz", hash = "sha256:dee3e8075687bcfc8f5ae247257c267b4264bc7f4b26b0b1978baade1bbf4001", size = 37392, upload-time = "2026-10-15T17:49:30.558Z" }
 wheels = [
@@ -926,13 +879,13 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "fsspec", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "packaging", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "pyyaml", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "requests", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "tqdm", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "typing-extensions", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "filelock", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "fsspec", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "packaging", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "pyyaml", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "requests", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "tqdm", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "typing-extensions", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/af/33/d252098a3b8d910065ad09cf318efb5dbe6c8bb586269bdfb47b7e021020/huggingface_hub-0.24.7.tar.gz", hash = "sha256:0ad8fb756e2831da0ac0491175b960f341fe06ebcf80ed6f8728313f95fc0207", size = 349211, upload-time = "2024-09-12T08:58:24.699Z" }
 wheels = [
@@ -944,23 +897,18 @@ name = "huggingface-hub"
 version = "0.36.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "fsspec", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "hf-xet", marker = "(platform_machine == 'aarch64' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'aarch64' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'amd64' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'amd64' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'amd64' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'arm64' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'arm64' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'arm64' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and extra == 'group-3-mmd-chexagent') or (platform_machine == 'x86_64' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "packaging", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "pyyaml", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "requests", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "tqdm", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "typing-extensions", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "filelock", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "fsspec", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "hf-xet", marker = "(platform_machine == 'aarch64' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'aarch64' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'amd64' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'amd64' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'arm64' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'arm64' and extra == 'group-3-mmd-opentslm') or (platform_machine == 'x86_64' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "packaging", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "pyyaml", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "requests", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "tqdm", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "typing-extensions", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7c/b7/8cb61d2eece5fb05a83271da168186721c450eb74e3c31f7ef3169fa475b/huggingface_hub-0.36.2.tar.gz", hash = "sha256:1934304d2fb224f8afa3b87007d58501acfda9215b334eed53072dd5e815ff7a", size = 649782, upload-time = "2026-02-06T09:24:13.098Z" }
 wheels = [
@@ -1073,8 +1021,8 @@ dependencies = [
     { name = "cycler" },
     { name = "fonttools" },
     { name = "kiwisolver" },
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
     { name = "packaging" },
     { name = "pillow" },
     { name = "pyparsing" },
@@ -1108,12 +1056,12 @@ dependencies = [
     { name = "gcsfs" },
     { name = "google-cloud-bigquery" },
     { name = "matplotlib" },
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
     { name = "pandas" },
     { name = "pillow" },
-    { name = "pyarrow", version = "17.0.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "pyarrow", version = "26.0.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "pyarrow", version = "17.0.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "pyarrow", version = "26.0.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "tqdm" },
@@ -1122,16 +1070,6 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-chexagent = [
-    { name = "accelerate", version = "1.15.0", source = { registry = "https://pypi.org/simple" } },
-    { name = "albumentations" },
-    { name = "einops" },
-    { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" } },
-    { name = "sentencepiece" },
-    { name = "timm" },
-    { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" } },
-    { name = "transformers", version = "4.40.0", source = { registry = "https://pypi.org/simple" } },
-]
 hf-modern = [
     { name = "accelerate", version = "1.15.0", source = { registry = "https://pypi.org/simple" } },
     { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" } },
@@ -1179,16 +1117,6 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-chexagent = [
-    { name = "accelerate" },
-    { name = "albumentations" },
-    { name = "einops" },
-    { name = "huggingface-hub" },
-    { name = "sentencepiece" },
-    { name = "timm" },
-    { name = "torch", specifier = ">=2.1" },
-    { name = "transformers", specifier = "==4.40.0" },
-]
 hf-modern = [
     { name = "accelerate", specifier = ">=1.0" },
     { name = "huggingface-hub", specifier = ">=0.30" },
@@ -1334,15 +1262,8 @@ name = "numpy"
 version = "2.5.4"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/95/b0/c7453d0b6e2073c3264468b106ee1563750cecc910965e67357e3698c83e/numpy-2.5.4.tar.gz", hash = "sha256:9a94cf751c9ad8ebaa835bcd3d40dacf8534ad086b88c38029b65123c7999d2a", size = 20866315, upload-time = "2026-10-10T20:05:31.422Z" }
 wheels = [
@@ -1361,7 +1282,7 @@ name = "nvidia-cublas"
 version = "13.1.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cuda-nvrtc", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cuda-nvrtc", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/a1/0bd24ee8c8d03adac032fd2909426a00c88f8c57961b1277ded97f91119f/nvidia_cublas-13.1.1.3-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:b7a210458267ac818974c53038fbec2e969d5c99f305ab15c72522fa9f001dd5", size = 542848918, upload-time = "2026-04-08T18:46:22.985Z" },
@@ -1436,7 +1357,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.1.0.70"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/fd/713452cd72343f682b1c7b9321e23829f00b842ceaedcda96e742ea0b0b3/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl", hash = "sha256:165764f44ef8c61fcdfdfdbe769d687e06374059fbb388b6c89ecb0e28793a6f", size = 664752741, upload-time = "2024-04-22T15:24:15.253Z" },
@@ -1447,7 +1368,7 @@ name = "nvidia-cudnn-cu13"
 version = "9.24.0.43"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cublas", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ca/30/7c257e3d5cb4fecb147b93895c66e29c93f8e76d74b45bb418ff0587c4ec/nvidia_cudnn_cu13-9.24.0.43-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:a6812a554a1ff0413e9c52b84c26c050380649ab9615f9c16bded368ce9f421f", size = 650976863, upload-time = "2026-07-02T16:23:39.248Z" },
@@ -1459,7 +1380,7 @@ name = "nvidia-cufft"
 version = "12.0.0.61"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8b/ae/f417a75c0259e85c1d2f83ca4e960289a5f814ed0cea74d18c353d3e989d/nvidia_cufft-12.0.0.61-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:2708c852ef8cd89d1d2068bdbece0aa188813a0c934db3779b9b1faa8442e5f5", size = 214053554, upload-time = "2025-09-04T08:31:38.196Z" },
@@ -1471,7 +1392,7 @@ name = "nvidia-cufft-cu12"
 version = "11.2.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/8a/0e728f749baca3fbeffad762738276e5df60851958be7783af121a7221e7/nvidia_cufft_cu12-11.2.1.3-py3-none-manylinux2014_aarch64.whl", hash = "sha256:5dad8008fc7f92f5ddfa2101430917ce2ffacd86824914c82e28990ad7f00399", size = 211422548, upload-time = "2024-06-18T19:33:39.396Z" },
@@ -1510,9 +1431,9 @@ name = "nvidia-cusolver"
 version = "12.0.4.66"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cusparse", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cublas", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cusparse", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/c3/b30c9e935fc01e3da443ec0116ed1b2a009bb867f5324d3f2d7e533e776b/nvidia_cusolver-12.0.4.66-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:02c2457eaa9e39de20f880f4bd8820e6a1cfb9f9a34f820eb12a155aa5bc92d2", size = 223467760, upload-time = "2025-09-04T08:33:04.222Z" },
@@ -1524,9 +1445,9 @@ name = "nvidia-cusolver-cu12"
 version = "11.6.1.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cusparse-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cusparse-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/6b/a5c33cf16af09166845345275c34ad2190944bcc6026797a39f8e0a282e0/nvidia_cusolver_cu12-11.6.1.9-py3-none-manylinux2014_aarch64.whl", hash = "sha256:d338f155f174f90724bbde3758b7ac375a70ce8e706d70b018dd3375545fc84e", size = 127634111, upload-time = "2024-06-18T19:35:01.793Z" },
@@ -1538,7 +1459,7 @@ name = "nvidia-cusparse"
 version = "12.6.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f8/94/5c26f33738ae35276672f12615a64bd008ed5be6d1ebcb23579285d960a9/nvidia_cusparse-12.6.3.3-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:80bcc4662f23f1054ee334a15c72b8940402975e0eab63178fc7e670aa59472c", size = 162155568, upload-time = "2025-09-04T08:33:42.864Z" },
@@ -1550,7 +1471,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.3.1.170"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/96/a9/c0d2f83a53d40a4a41be14cea6a0bf9e668ffcf8b004bd65633f433050c0/nvidia_cusparse_cu12-12.3.1.170-py3-none-manylinux2014_aarch64.whl", hash = "sha256:9d32f62896231ebe0480efd8a7f702e143c98cfaa0e8a76df3386c1ba2b54df3", size = 207381987, upload-time = "2024-06-18T19:35:32.989Z" },
@@ -1684,21 +1605,6 @@ wheels = [
 ]
 
 [[package]]
-name = "opencv-python-headless"
-version = "4.11.0.86"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" } },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/36/2f/5b2b3ba52c864848885ba988f24b7f105052f68da9ab0e693cc7c25b0b30/opencv-python-headless-4.11.0.86.tar.gz", hash = "sha256:996eb282ca4b43ec6a3972414de0e2331f5d9cda2b41091a49739c19fb843798", size = 95177929, upload-time = "2025-01-16T13:53:40.22Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/dc/53/2c50afa0b1e05ecdb4603818e85f7d174e683d874ef63a6abe3ac92220c8/opencv_python_headless-4.11.0.86-cp37-abi3-macosx_13_0_arm64.whl", hash = "sha256:48128188ade4a7e517237c8e1e11a9cdf5c282761473383e77beb875bb1e61ca", size = 37326460, upload-time = "2025-01-16T13:52:57.015Z" },
-    { url = "https://files.pythonhosted.org/packages/3b/43/68555327df94bb9b59a1fd645f63fafb0762515344d2046698762fc19d58/opencv_python_headless-4.11.0.86-cp37-abi3-macosx_13_0_x86_64.whl", hash = "sha256:a66c1b286a9de872c343ee7c3553b084244299714ebb50fbdcd76f07ebbe6c81", size = 56723330, upload-time = "2025-01-16T13:55:45.731Z" },
-    { url = "https://files.pythonhosted.org/packages/45/be/1438ce43ebe65317344a87e4b150865c5585f4c0db880a34cdae5ac46881/opencv_python_headless-4.11.0.86-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6efabcaa9df731f29e5ea9051776715b1bdd1845d7c9530065c7951d2a2899eb", size = 29487060, upload-time = "2025-01-16T13:51:59.625Z" },
-    { url = "https://files.pythonhosted.org/packages/dd/5c/c139a7876099916879609372bfa513b7f1257f7f1a908b0bdc1c2328241b/opencv_python_headless-4.11.0.86-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e0a27c19dd1f40ddff94976cfe43066fbbe9dfbb2ec1907d66c19caef42a57b", size = 49969856, upload-time = "2025-01-16T13:53:29.654Z" },
-]
-
-[[package]]
 name = "opentelemetry-api"
 version = "1.45.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1758,7 +1664,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "googleapis-common-protos" },
     { name = "opentelemetry-api" },
-    { name = "opentelemetry-exporter-http-transport", extra = ["requests"], marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "opentelemetry-exporter-http-transport", extra = ["requests"], marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
     { name = "opentelemetry-exporter-otlp-common" },
     { name = "opentelemetry-exporter-otlp-proto-common" },
     { name = "opentelemetry-proto" },
@@ -1849,8 +1755,8 @@ name = "pandas"
 version = "3.0.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
     { name = "python-dateutil" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e2/17/d7b106e05bfa642e8694451e7d3d759c6a241c5386a5d962e4f66c047e06/pandas-3.0.6.tar.gz", hash = "sha256:66b07ef7315a31bfe1089cd3d71a7de781c9dca986762d0b4fe7c0ef17465d10", size = 4667686, upload-time = "2026-09-17T23:23:18.345Z" }
@@ -1983,7 +1889,7 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/27/4e/ea6d43f324169f8aec0e57569443a38bab4b398d09769ca64f7b4d467de3/pyarrow-17.0.0.tar.gz", hash = "sha256:4beca9521ed2c0921c1023e68d097d0299b62c362639ea315572a58f3f50fd28", size = 1112479, upload-time = "2024-07-17T10:41:25.092Z" }
 wheels = [
@@ -2000,15 +1906,8 @@ name = "pyarrow"
 version = "26.0.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ec/34/17c34cb38e5d940e38f0f0d9fdfa0e8a506676409ea9b85aff7e3079f831/pyarrow-26.0.0.tar.gz", hash = "sha256:0cccd36e00ea3afeb52ded61f2721ce71f604853d70c45365c58324eb773d6ae", size = 1239433, upload-time = "2026-10-09T08:26:25.315Z" }
 wheels = [
@@ -2227,8 +2126,8 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "joblib" },
     { name = "narwhals" },
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
     { name = "scipy" },
     { name = "threadpoolctl" },
 ]
@@ -2245,8 +2144,8 @@ name = "scipy"
 version = "1.17.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7a/97/5a3609c4f8d58b039179648e62dd220f89864f56f7357f5d4f45c29eb2cc/scipy-1.17.1.tar.gz", hash = "sha256:95d8e012d8cb8816c226aef832200b1d45109ed4464303e997c5b13122b297c0", size = 30573822, upload-time = "2026-02-23T00:26:24.851Z" }
 wheels = [
@@ -2301,20 +2200,6 @@ wheels = [
 ]
 
 [[package]]
-name = "simsimd"
-version = "6.5.16"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/99/8c/070a179eb509b689509dacbd0bc81aa2e36614aff2c8aa6dc6c440886206/simsimd-6.5.16.tar.gz", hash = "sha256:0a005c6e2dacec83f235a747f7dbecca46b5d4d1e183ecc1929ca556ee7d7564", size = 187216, upload-time = "2026-03-07T14:36:23.191Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/52/b8/53f89ca12a3526b86c4221de68497d2b1f4c3f7f6b47d8c153ef14c67d15/simsimd-6.5.16-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:7f8a207a23bc9060a46b234ec304a712f1cbb0a240d18b484bad5cabf0d01746", size = 105152, upload-time = "2026-03-07T14:34:52.203Z" },
-    { url = "https://files.pythonhosted.org/packages/56/4f/0fa014163c6b846182f6355ebfc24f79e86ced7a2cce0ca95ba711f19e04/simsimd-6.5.16-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:51c6b0ad0078f8c6b4d3ae4ec256bcf861c2bf5909d4567440b86f9ad7f94fd3", size = 94599, upload-time = "2026-03-07T14:34:53.564Z" },
-    { url = "https://files.pythonhosted.org/packages/fb/3c/35266c8d128ea42706d9436b54994039e2659fb37ed28f1c62e123a86631/simsimd-6.5.16-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:13b8af340ad5cc1311cae6f8d778aef80bff1922260dee1a17ca60878eaac466", size = 385042, upload-time = "2026-03-07T14:34:54.873Z" },
-    { url = "https://files.pythonhosted.org/packages/3c/28/7ae846998728326759eab771afd83ad721b6c10e9cef7da2b5ca9bdd4a7b/simsimd-6.5.16-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:12ae4f5f2ade1152d2d3a0094f56fae636204d40595b385ea9b304410647a353", size = 583515, upload-time = "2026-03-07T14:34:56.578Z" },
-    { url = "https://files.pythonhosted.org/packages/ce/b9/3a5717c988b6093a5fb15484754f7ffe5451a7559f3c1d5f2b3183199441/simsimd-6.5.16-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:97bcda199d4be8f4372af6b781e96e7e8cd1838ce256a83deef75ac660dcd464", size = 421418, upload-time = "2026-03-07T14:34:58.316Z" },
-    { url = "https://files.pythonhosted.org/packages/bb/65/e218050eb89390c64ddc327f36da8e3b471483f11c0f3683c2bf891d2dab/simsimd-6.5.16-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:a59ef1ab3d0f6d4f1dcac43e1b2db9b8e73c00e72714716e061bfd27dde2d652", size = 619558, upload-time = "2026-03-07T14:34:59.847Z" },
-]
-
-[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2351,30 +2236,6 @@ wheels = [
 ]
 
 [[package]]
-name = "stringzilla"
-version = "5.3.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b8/92/477d21501bc9aa20f8fdad3bcf48fad9dee9162457677f41a8d01a85e3bf/stringzilla-5.3.1.tar.gz", hash = "sha256:845dc4c2889e73d4f0ff650cb80469a02af554a7a0c20c090a4226605d87f018", size = 1995419, upload-time = "2026-10-19T03:59:45.264Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/da/8cb17d2e6f611ea9bdd35be5146647f032cbc8c3a0374d33179dc424d688/stringzilla-5.3.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:23a7ab0da6717ec83562dba1512c5f75efbe4f24750e091cc9f474ee39af2594", size = 294324, upload-time = "2026-10-19T03:58:15.804Z" },
-    { url = "https://files.pythonhosted.org/packages/da/bc/cf3c9fa85f65acfb556af2ba4fa056deb78480b72c77029ce991151ed7d4/stringzilla-5.3.1-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:94e84fe17cccf8fdecaab557e549bceaa1e368b2083376e59cd82386c34541d2", size = 321768, upload-time = "2026-10-19T03:58:17.196Z" },
-    { url = "https://files.pythonhosted.org/packages/b9/f0/46fd90d197b644c852aa6c7ef1ac162507a9caeddcc5c2bc1ea7e3ce7d36/stringzilla-5.3.1-cp312-cp312-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:ed985829990e9893050f6ec5c9965ddf6cfee54b9fbd7a9d88b3f2ba7b864d31", size = 2258348, upload-time = "2026-10-19T03:58:18.324Z" },
-    { url = "https://files.pythonhosted.org/packages/4f/4e/ae40c6f86a7b39230ef915cd2ce88f0882233f4f9e748b7071fdc51549bc/stringzilla-5.3.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:38c7ce80682ce5dfb3f58ea97ac2d91fb96d3797058a951c37b2a29b65c12d87", size = 3379243, upload-time = "2026-10-19T03:58:19.868Z" },
-    { url = "https://files.pythonhosted.org/packages/4b/93/401d5dddc89e0439f3ea08fb8b23979f906f694d67ee72278fb9c46cdcaa/stringzilla-5.3.1-cp312-cp312-manylinux2014_armv7l.manylinux_2_17_armv7l.manylinux_2_31_armv7l.whl", hash = "sha256:e65a422f953a2f3a18fabd7a3327e0bf0e2775add526a7a12ba5db95ce03d58a", size = 2399522, upload-time = "2026-10-19T03:58:21.138Z" },
-    { url = "https://files.pythonhosted.org/packages/cc/e7/1b13b781bd82b6d91ea2a8ad84d94939fd8feae01e2c1c55c09d7328c21b/stringzilla-5.3.1-cp312-cp312-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:eb31a309985e0f5d0f2cdf627ebcef7bc4859d8bddd6ada21e3b27f18ef4817a", size = 2599111, upload-time = "2026-10-19T03:58:22.316Z" },
-    { url = "https://files.pythonhosted.org/packages/72/76/a8d1c1c017a091e17be8ec153d471cd12b67fbf56173bddb42173b470355/stringzilla-5.3.1-cp312-cp312-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:375b55f4ba682c9db94918dc6ea737b6c1277465d6975d0c735496a99e54f6bb", size = 2442755, upload-time = "2026-10-19T03:58:23.733Z" },
-    { url = "https://files.pythonhosted.org/packages/c3/8e/38753eb857255afcf0616c0d1ce5d732e47dbd4dec49b81d26b306b17b95/stringzilla-5.3.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f72b2c277b8a403c0427ed90cff845b3d5129e885e77aa322b0f2cdc19aafcd0", size = 4220233, upload-time = "2026-10-19T03:58:25.618Z" },
-    { url = "https://files.pythonhosted.org/packages/22/f0/c7c54a1f36719d21dd47a48205b9e95500d442b87f1ddb91c92569a2311b/stringzilla-5.3.1-cp312-cp312-manylinux_2_34_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:ba3b00907988bd0730e0dd04700675e1b69e4940afc4b7a866f3f8ff1f4a848e", size = 665974, upload-time = "2026-10-19T03:58:26.962Z" },
-    { url = "https://files.pythonhosted.org/packages/43/ae/4ad3c9234fd6bc56577fce35b4487ebe001f2f6250b778f9e3733f321687/stringzilla-5.3.1-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:a6f7212212f6396c9970f5e4f6c50f405f45122305330008154530d4077368b0", size = 3352557, upload-time = "2026-10-19T03:58:28.769Z" },
-    { url = "https://files.pythonhosted.org/packages/f2/27/0e0afb6f27a47d003479878ef580f698e449db78f9f3f557d59c8259670e/stringzilla-5.3.1-cp312-cp312-musllinux_1_2_armv7l.whl", hash = "sha256:e61c8c70f57424438767372ab069bcdc0c61da2d12fb52eb45f57b69d110b405", size = 2252325, upload-time = "2026-10-19T03:58:30.096Z" },
-    { url = "https://files.pythonhosted.org/packages/be/43/bfd588cc6382c0ceceb7d04658e515a1c76984c2843cee39e03da6122866/stringzilla-5.3.1-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:433288f169edc364c2c956180232d37d896e253801be6ef867be2c572af5bcd2", size = 2263556, upload-time = "2026-10-19T03:58:31.337Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/6b/31525e7a2cc12a793e0edcf2687178b384ed34462a770898ed1c07520cb2/stringzilla-5.3.1-cp312-cp312-musllinux_1_2_ppc64le.whl", hash = "sha256:d039f771b15a15c0e0f518622bd12ad6f4aa23d63c680fd4e724988fcde20929", size = 2588961, upload-time = "2026-10-19T03:58:32.751Z" },
-    { url = "https://files.pythonhosted.org/packages/01/92/b3834f983d0abaa026179d440f578a2ab56004d8e08b31d39542de40d49b/stringzilla-5.3.1-cp312-cp312-musllinux_1_2_riscv64.whl", hash = "sha256:f59b7b88d0c6a6d368fac95a28e52b1c987aa45b4ad76f2211606367cbed36bd", size = 2249433, upload-time = "2026-10-19T03:58:34.229Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/bf/9a0107dd6921b97e834aa4d70298ef46c6834f696a5718eac24da4e2a841/stringzilla-5.3.1-cp312-cp312-musllinux_1_2_s390x.whl", hash = "sha256:de66e9fa3cb87e2696a4441b4701af526c2f569464dbcbc432542f58fdce6430", size = 2426364, upload-time = "2026-10-19T03:58:35.63Z" },
-    { url = "https://files.pythonhosted.org/packages/11/2b/378bae6871991a3a0068bdd888303596400193a2aa5aa8d88d83f2bc08e2/stringzilla-5.3.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:5227d88f00c150db13c035109f3b6cf09fe6f13222f6481300f214fdfdb53c1f", size = 4173415, upload-time = "2026-10-19T03:58:37.455Z" },
-]
-
-[[package]]
 name = "sympy"
 version = "1.13.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2383,7 +2244,7 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "mpmath", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "mpmath", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ca/99/5a5b6f19ff9f083671ddf7b9632028436167cd3d33e11015754e41b249a4/sympy-1.13.1.tar.gz", hash = "sha256:9cebf7e04ff162015ce31c9c6c9144daa34a93bd082f54fd8f12deca4f47515f", size = 7533040, upload-time = "2024-07-19T09:26:51.238Z" }
 wheels = [
@@ -2395,16 +2256,11 @@ name = "sympy"
 version = "1.14.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "mpmath", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "mpmath", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
 wheels = [
@@ -2425,14 +2281,14 @@ name = "timm"
 version = "1.0.30"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "huggingface-hub", version = "0.24.7", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "huggingface-hub", version = "0.24.7", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
     { name = "pyyaml" },
     { name = "safetensors" },
-    { name = "torch", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
-    { name = "torchvision", version = "0.20.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "torchvision", version = "0.29.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "torch", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "torchvision", version = "0.20.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "torchvision", version = "0.29.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0e/ab/49041213990e48edcb6013463b18ef86d8d3c5d6ac5b408802c480443025/timm-1.0.30.tar.gz", hash = "sha256:1444a3af7e17fdba5440ac2bcf6e4b728da96dd62289ed9e1bcba31a545f5935", size = 2534738, upload-time = "2026-09-22T20:46:13.9Z" }
 wheels = [
@@ -2462,32 +2318,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f6/de/3707df0c1d7bf55e6a4dba724700353bfee8e292fdd8ccfe93416549124d/tokenizers-0.15.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9e0480c452217edd35eca56fafe2029fb4d368b7c0475f8dfa3c5c9c400a7456", size = 3575314, upload-time = "2024-02-12T02:25:42.212Z" },
     { url = "https://files.pythonhosted.org/packages/2e/dd/7b8da304d152bb46f13bc2ba5bd545480ab6ce39d94a53eef07f7624d235/tokenizers-0.15.2-cp312-cp312-musllinux_1_1_aarch64.whl", hash = "sha256:a33ab881c8fe70474980577e033d0bc9a27b7ab8272896e500708b212995d834", size = 9682779, upload-time = "2024-02-12T02:25:44.027Z" },
     { url = "https://files.pythonhosted.org/packages/07/aa/66e8a81e07a791ca6ee9d74ee6de1ffbcd3985149f13aeb530bd409baba0/tokenizers-0.15.2-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:a308a607ca9de2c64c1b9ba79ec9a403969715a1b8ba5f998a676826f1a7039d", size = 9995614, upload-time = "2024-02-12T02:25:46.804Z" },
-]
-
-[[package]]
-name = "tokenizers"
-version = "0.19.1"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux'",
-    "sys_platform == 'darwin'",
-]
-dependencies = [
-    { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" } },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/48/04/2071c150f374aab6d5e92aaec38d0f3c368d227dd9e0469a1f0966ac68d1/tokenizers-0.19.1.tar.gz", hash = "sha256:ee59e6680ed0fdbe6b724cf38bd70400a0c1dd623b07ac729087270caeac88e3", size = 321039, upload-time = "2024-04-17T21:40:41.849Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/90/2890cd096898dcdb596ee172cde40c0f54a9cf43b0736aa260a5501252af/tokenizers-0.19.1-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:621d670e1b1c281a1c9698ed89451395d318802ff88d1fc1accff0867a06f153", size = 2530580, upload-time = "2024-04-17T21:37:10.688Z" },
-    { url = "https://files.pythonhosted.org/packages/74/d1/f4e1e950adb36675dfd8f9d0f4be644f3f3aaf22a5677a4f5c81282b662e/tokenizers-0.19.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:d924204a3dbe50b75630bd16f821ebda6a5f729928df30f582fb5aade90c818a", size = 2436682, upload-time = "2024-04-17T21:37:12.966Z" },
-    { url = "https://files.pythonhosted.org/packages/ed/30/89b321a16c58d233e301ec15072c0d3ed5014825e72da98604cd3ab2fba1/tokenizers-0.19.1-cp312-cp312-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:4f3fefdc0446b1a1e6d81cd4c07088ac015665d2e812f6dbba4a06267d1a2c95", size = 3693494, upload-time = "2024-04-17T21:37:14.755Z" },
-    { url = "https://files.pythonhosted.org/packages/05/40/fa899f32de483500fbc78befd378fd7afba4270f17db707d1a78c0a4ddc3/tokenizers-0.19.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9620b78e0b2d52ef07b0d428323fb34e8ea1219c5eac98c2596311f20f1f9266", size = 3566541, upload-time = "2024-04-17T21:37:17.067Z" },
-    { url = "https://files.pythonhosted.org/packages/67/14/e7da32ae5fb4971830f1ef335932fae3fa57e76b537e852f146c850aefdf/tokenizers-0.19.1-cp312-cp312-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:04ce49e82d100594715ac1b2ce87d1a36e61891a91de774755f743babcd0dd52", size = 3430792, upload-time = "2024-04-17T21:37:19.055Z" },
-    { url = "https://files.pythonhosted.org/packages/f2/4b/aae61bdb6ab584d2612170801703982ee0e35f8b6adacbeefe5a3b277621/tokenizers-0.19.1-cp312-cp312-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:c5c2ff13d157afe413bf7e25789879dd463e5a4abfb529a2d8f8473d8042e28f", size = 3962812, upload-time = "2024-04-17T21:37:21.008Z" },
-    { url = "https://files.pythonhosted.org/packages/0a/b6/f7b7ef89c4da7b20256e6eab23d3835f05d1ca8f451d31c16cbfe3cd9eb6/tokenizers-0.19.1-cp312-cp312-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:3174c76efd9d08f836bfccaca7cfec3f4d1c0a4cf3acbc7236ad577cc423c840", size = 4024688, upload-time = "2024-04-17T21:37:23.659Z" },
-    { url = "https://files.pythonhosted.org/packages/80/54/12047a69f5b382d7ee72044dc89151a2dd0d13b2c9bdcc22654883704d31/tokenizers-0.19.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7c9d5b6c0e7a1e979bec10ff960fae925e947aab95619a6fdb4c1d8ff3708ce3", size = 3610961, upload-time = "2024-04-17T21:37:26.234Z" },
-    { url = "https://files.pythonhosted.org/packages/52/b7/1e8a913d18ac28feeda42d4d2d51781874398fb59cd1c1e2653a4b5742ed/tokenizers-0.19.1-cp312-cp312-musllinux_1_1_aarch64.whl", hash = "sha256:a179856d1caee06577220ebcfa332af046d576fb73454b8f4d4b0ba8324423ea", size = 9631367, upload-time = "2024-04-17T21:37:28.752Z" },
-    { url = "https://files.pythonhosted.org/packages/ac/3d/2284f6d99f8f21d09352b88b8cfefa24ab88468d962aeb0aa15c20d76b32/tokenizers-0.19.1-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:952b80dac1a6492170f8c2429bd11fcaa14377e097d12a1dbe0ef2fb2241e16c", size = 9950121, upload-time = "2024-04-17T21:37:31.741Z" },
 ]
 
 [[package]]
@@ -2526,26 +2356,26 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "fsspec", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "jinja2", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "networkx", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cublas-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cuda-cupti-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cuda-nvrtc-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cuda-runtime-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cudnn-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cufft-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-curand-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cusolver-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cusparse-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nccl-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nvtx-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "setuptools", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "sympy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "triton", version = "3.1.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "typing-extensions", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "filelock", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "fsspec", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "jinja2", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "networkx", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cublas-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cuda-cupti-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cudnn-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cufft-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-curand-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cusolver-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cusparse-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nccl-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvtx-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "setuptools", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "sympy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "triton", version = "3.1.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "typing-extensions", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8b/5c/36c114d120bfe10f9323ed35061bc5878cc74f3f594003854b0ea298942f/torch-2.5.1-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:ed231a4b3a5952177fafb661213d690a72caaad97d5824dd4fc17ab9e15cec03", size = 906389343, upload-time = "2024-10-29T17:37:06.758Z" },
@@ -2558,29 +2388,24 @@ name = "torch"
 version = "2.14.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "cuda-bindings", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "cuda-toolkit", extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "curand", "cusolver", "cusparse", "nvjitlink", "nvrtc", "nvtx"], marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "filelock", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "fsspec", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "jinja2", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "networkx", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "nvidia-cudnn-cu13", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-cusparselt-cu13", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nccl-cu13", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "nvidia-nvshmem-cu13", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "setuptools", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "sympy", version = "1.14.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
-    { name = "triton", version = "3.8.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-chexagent') or (sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
-    { name = "typing-extensions", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "cuda-bindings", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "cuda-toolkit", extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "curand", "cusolver", "cusparse", "nvjitlink", "nvrtc", "nvtx"], marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "filelock", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "fsspec", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "jinja2", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "networkx", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "nvidia-cudnn-cu13", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-cusparselt-cu13", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nccl-cu13", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "nvidia-nvshmem-cu13", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "setuptools", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "sympy", version = "1.14.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "triton", version = "3.8.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (sys_platform == 'linux' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "typing-extensions", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4b/3c/379349820e9a6e713826de3d0b88f07728541bdcabe2a3afd128871cdc4b/torch-2.14.1-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:420dbf314c180ee4b86e9bc00aee5746a7d6e5bacdd7df925af671ed393f0b2e", size = 127307099, upload-time = "2026-09-30T17:44:10.421Z" },
@@ -2597,9 +2422,9 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "pillow", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "torch", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "pillow", marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "torch", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c5/eb/4ba19616378f2bc085999432fded2b7dfdbdccc6dd0fc293203452508100/torchvision-0.20.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:1a31256ff945d64f006bb306813a7c95a531fe16bfb2535c837dd4c104533d7a", size = 1787553, upload-time = "2024-10-29T17:40:50.63Z" },
@@ -2612,16 +2437,13 @@ name = "torchvision"
 version = "0.29.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'darwin' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
-    { name = "pillow", marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
-    { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "pillow", marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f3/f8/855c7b326ed17a8dac4a03e8e6fec33ef6728e4baa00d816cf1227bb6681/torchvision-0.29.1-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:3b6eb9d2f8fe9b93d9d37637749df361efeed133d96ddd503184a1b5b12bb27f", size = 1813847, upload-time = "2026-09-30T17:57:01.009Z" },
@@ -2665,32 +2487,6 @@ wheels = [
 
 [[package]]
 name = "transformers"
-version = "4.40.0"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux'",
-    "sys_platform == 'darwin'",
-]
-dependencies = [
-    { name = "filelock" },
-    { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" } },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" } },
-    { name = "packaging" },
-    { name = "pyyaml" },
-    { name = "regex" },
-    { name = "requests" },
-    { name = "safetensors" },
-    { name = "tokenizers", version = "0.19.1", source = { registry = "https://pypi.org/simple" } },
-    { name = "tqdm" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/43/01/5f16275cf57489733d16fbe188d67ed70908d62d35cf26fe7243f1f15608/transformers-4.40.0.tar.gz", hash = "sha256:fdb01dfe6a492bd34e3fa2aefffa470b1d8a2341db47a932f83ed33839d96b03", size = 7811511, upload-time = "2024-04-18T13:59:38.873Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/c8/844d5518a6aeb4ffdc0cf0cae65ae13dbe5838306728c5c640b5a6e2a0c9/transformers-4.40.0-py3-none-any.whl", hash = "sha256:92797ec3368ed4476a053529a4039a12ad09167d9e371981dda4afb4bdf590ac", size = 8998461, upload-time = "2024-04-18T13:59:33.427Z" },
-]
-
-[[package]]
-name = "transformers"
 version = "4.57.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
@@ -2722,7 +2518,7 @@ resolution-markers = [
     "sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
+    { name = "filelock", marker = "(sys_platform == 'linux' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/eb/65f5ba83c2a123f6498a3097746607e5b2f16add29e36765305e4ac7fdd8/triton-3.1.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c8182f42fd8080a7d39d666814fa36c5e30cc00ea7eeeb1a2983dbb4c99a0fdc", size = 209551444, upload-time = "2024-10-14T16:05:53.433Z" },
@@ -2733,10 +2529,7 @@ name = "triton"
 version = "3.8.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm'",
-    "sys_platform == 'linux' and extra != 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
-    "platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'group-3-mmd-chexagent' and extra != 'group-3-mmd-hf-modern' and extra != 'group-3-mmd-llava-med' and extra != 'group-3-mmd-opentslm'",
+    "sys_platform == 'linux'",
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/87/07/0f8cd8e8db0472334253efdaaab3d0819fea27aa99bf0e7f1aeea4ceb5ae/triton-3.8.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a9c404c69ed4a39e8ec632eaf6b9fe058a060bf98979c177f6ef666f06bb8d50", size = 226474486, upload-time = "2026-08-28T16:08:18.29Z" },
@@ -2871,8 +2664,8 @@ name = "xgboost"
 version = "3.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-hf-modern') or (extra == 'group-3-mmd-chexagent' and extra == 'group-3-mmd-opentslm') or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-chexagent' or extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-llava-med' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra != 'group-3-mmd-llava-med' or extra == 'group-3-mmd-opentslm'" },
     { name = "nvidia-nccl-cu13", marker = "sys_platform == 'linux'" },
     { name = "scipy" },
 ]

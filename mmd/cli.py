@@ -6,11 +6,12 @@ mmd/config.py); --cohort overrides the cohort version, --define adds modality se
     mmd modsets [--define cxr_ecg_notes=e,x,n] [--strategies ...] [--max-order 2]
     mmd cohort build --modset cxr_notes [--strategies all] [--max-order 2] [--donor-plans <dir>] [--pins <csv>]
     mmd index import --model llava-med --run-folder <notebook run> [--mean-from <npz>] [--lookup name=<dir>]
-    mmd weights stage --model medgemma-4b
-    mmd perturb --model medgemma-4b [--modset cxr_notes] [--smoke 3 | --plan] [--levels L1]
+    mmd weights stage --model gemma3-4b
+    mmd perturb --model gemma3-4b [--modset cxr_notes] [--smoke 3 | --plan] [--levels L1]
                 [--strategies within_patient,matched_label_swap] [--max-order 1] [--shard 0/2]
-    mmd analyse --model medgemma-4b [--modset cxr_notes]
-    mmd zoo --modset cxr_notes [--models llava-med,medgemma-4b] [--exclude-exposed] [--split-file <csv>]
+    mmd analyse --model gemma3-4b [--modset cxr_notes]
+    mmd compare-notebook --model llava-med --notebook-dir gs://<bucket>/emb/legacy/llava-med-v1.5-swap4
+    mmd zoo --modset cxr_notes [--models llava-med,gemma3-4b] [--exclude-exposed] [--split-file <csv>]
     mmd collect
     mmd status --modset cxr_notes
     mmd bq link --modset cxr_notes
@@ -193,6 +194,16 @@ def analyse(model: str = typer.Option(...), modset: Optional[str] = ModelModsetO
             strategies: Optional[str] = StrategiesOpt, charts: bool = True, selftest: bool = True):
     """Probe, effect tables and charts for one model -> {root}/results|figures/<version>/<model>/<set>/."""
     _run(_zoo(cohort, define).analyse, model, modset, _list(strategies), charts, selftest)
+
+
+@app.command('compare-notebook')
+def compare_notebook(model: str = typer.Option(...),
+                     notebook_dir: str = typer.Option(..., help="the notebook run folder holding its swap4_*.csv "
+                                                                "tables, e.g. gs://<bucket>/emb/legacy/swap4"),
+                     modset: Optional[str] = ModelModsetOpt, cohort: Optional[str] = CohortOpt,
+                     define: List[str] = DefineOpt):
+    """Check `mmd analyse` reproduces the notebook: matched rows and max |difference| per column, per table."""
+    _run(_zoo(cohort, define).compare_notebook, model, notebook_dir, modset)
 
 
 @app.command()

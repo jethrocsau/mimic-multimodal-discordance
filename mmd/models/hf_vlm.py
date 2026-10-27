@@ -1,7 +1,7 @@
 """Generic adapter for Hugging Face image-text models (AutoModelForImageTextToText + a chat template).
 
 Covers models whose processor takes {"type": "image"} chat content and whose image features come out of a
-`multi_modal_projector` (Gemma 3 / MedGemma, LLaVA-HF, ...). A subclass sets hf_id, meta and dtype; it can
+`multi_modal_projector` (Gemma 3, LLaVA-HF, ...). A subclass sets hf_id, meta and dtype; it can
 override `messages()` for a different template.
 
 One greedy generate() call gives everything:
@@ -31,6 +31,11 @@ def yes_no_ids(tok):
     yes = {first(s) for s in (' Yes', ' yes', 'Yes', 'yes')}
     no = {first(s) for s in (' No', ' no', 'No', 'no')}
     return sorted(yes - no), sorted(no - yes)
+
+
+def token_rows(t):
+    """One image's features as (tokens, H): hooks give (B, tokens, H), or (tokens, H) for Qwen-VL's flat patches."""
+    return (t if t.dim() == 2 else t[0]).float().reshape(-1, t.shape[-1])
 
 
 def readouts_from_generate(torch, gen, L, span, yes_ids, no_ids, tok):
@@ -128,9 +133,9 @@ class HFImageTextAdapter(Adapter):
                                       output_hidden_states=True, output_logits=True, return_dict_in_generate=True)
         r = readouts_from_generate(torch, gen, L, self._span(x['input_ids']), self.yes_ids, self.no_ids, self.tok)
         if sample.signal is not None and 'proj' in cap:
-            r['projector_mean'] = to_np(cap['proj'][0].float().reshape(-1, cap['proj'].shape[-1]).mean(0))
-            r['encoder_mean'] = to_np(cap['vision'][0].float().reshape(-1, cap['vision'].shape[-1]).mean(0)) \
-                if 'vision' in cap else np.full(1, np.nan, np.float32)
+            r['projector_mean'] = to_np(token_rows(cap['proj']).mean(0))
+            r['encoder_mean'] = to_np(token_rows(cap['vision']).mean(0)) if 'vision' in cap \
+                else np.full(1, np.nan, np.float32)
         else:
             h = self.model.config.get_text_config().hidden_size if hasattr(self.model.config, 'get_text_config') \
                 else r['prompt_mean_state'].shape[0]
