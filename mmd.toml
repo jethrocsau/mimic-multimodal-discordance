@@ -1,0 +1,3 @@
+root = "gs://mimic-mmd"
+project = "ace-apex-508114-n9"
+cohort_version = "v1"

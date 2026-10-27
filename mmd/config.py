@@ -23,7 +23,7 @@ class Config:
     project: str = 'ace-apex-508114-n9'        # GCP project with the phase0 BigQuery dataset
     dataset: str = 'phase0'                     # BigQuery dataset built by sql/phase0_dataform
     location: str = 'US'                        # phase0 lives in the US multi-region
-    root: str = 'gs://CHANGE-ME-mmd'            # bucket (or local folder) holding data, cohort, emb, results
+    root: str = 'gs://mimic-mmd'                # bucket (or local folder) holding data, cohort, emb, results
     cohort_version: str = 'v1'
     raw_root: str = ''                          # where CXR JPG / ECG files live; '' = {root}/physionet
     levels: Tuple[str, ...] = ('L1', 'L2', 'L3')

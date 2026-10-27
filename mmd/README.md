@@ -64,10 +64,36 @@ Contents: [1 How it fits together](#1-how-it-fits-together) · [2 Concepts](#2-c
 
 ## 2. Concepts
 
-### Tiers and folds
+### Stays, recipients and reference inputs
+The unit is one ICU **stay**. A **recipient** is a stay with a baseline record of every modality in the set, so it
+can be given perturbed inputs. Its **reference input** is its own baseline records, unchanged; every perturbation is
+compared against it. The outcome is death within one year of the ICU admission.
+
+### Tiers
 The cohort has three nested tiers, `L1 ⊂ L2 ⊂ L3`, from the narrowest cardiac ICU definition to the broadest. Every
-analysis runs per tier. Within a tier, stays are split into `n_splits` (5) fixed folds, stratified by outcome; every
-probe is fitted on four folds and scored on the fifth.
+analysis runs separately per tier.
+
+### Probes
+A **probe** is a small classifier (logistic regression or XGBoost) trained to predict the outcome from one stored
+readout of the model, such as the hidden state at the last prompt token. It asks what the model's internal
+representation knows about mortality, separately from what the model answers. The probe is trained on reference
+inputs only, then applied unchanged to the perturbed inputs: if a perturbation moves the probe's risk, the model's
+representation changed in an outcome-relevant way.
+
+### Folds
+Probes are trained and tested by 5-fold cross-validation. Within each tier, the recipients are split once into
+`n_splits` (5) groups, the **folds**, each with the same mix of age group × sex × outcome:
+```
+           fold 1  fold 2  fold 3  fold 4  fold 5
+round 1    test    train   train   train   train
+round 2    train   test    train   train   train
+ ...
+round 5    train   train   train   train   test
+```
+In each round the probe is fitted on the reference inputs of the four training folds and scores the test fold's
+stays, on their reference input and on every perturbation of it. After five rounds every stay has been scored once,
+by a probe that never saw it. Donors for swaps also come from the recipient's test fold, so the probe never trained
+on the stay whose record is swapped in. The folds are saved in the manifest: every model is tested on the same split.
 
 ### Modality sets
 A set is a name plus two or more modality keys. `cxr_notes = (x, n)` and `ecg_notes = (e, n)` are built in. Add your
@@ -93,7 +119,7 @@ Each strategy replaces a **subset** of the set's modalities and keeps the rest a
 | `within_patient` | `temporal` | the stay's own latest follow-up record |
 | `matched_patient` | `matched` | a same-outcome donor's baseline record |
 | `matched_label_swap` | `counterfactual` | an opposite-outcome donor's baseline record |
-| `cohort_mean` | `mean` | signals: the cohort-mean encoder output; the note is removed |
+| `cohort_mean` | `mean` | signals: the cohort-mean signal features (projector output); the note is removed |
 
 - **`max_order` (default 2)** caps how many modalities are perturbed at once. Subsets are combinations: k modalities
   give Σ_{r ≤ max_order} C(k, r) subsets (k = 5: 5 + 10 = 15).
@@ -115,6 +141,7 @@ All are final-layer hidden states unless noted:
 | readout | meaning |
 |---|---|
 | `yes_probability` | P(Yes) / (P(Yes) + P(No)) for the first answer token after "Answer:" |
+| `yes_log_odds` | log P(Yes) − log P(No), the same quantity unsquashed: it still ranks stays when `yes_probability` rounds to 1.0 (Gemma 3, Qwen2.5-VL) |
 | `prompt_last_state` | state at the last prompt token |
 | `prompt_mean_state` | mean over every prompt token |
 | `signal_mean_state` | mean over the image or ECG tokens |
@@ -127,8 +154,8 @@ All are final-layer hidden states unless noted:
 - **reliance share:** m's share of the summed |Δ risk| when m alone gets the label swap. How much the model leans on m.
 - **bias = reliance − information.** Above 0, the model relies on m more than m alone justifies.
 
-Each vector readout is reduced with PCA (fitted on the training folds) and probed with logistic regression and
-XGBoost; `yes_probability` is also read raw, as the model's own risk score. For every pair of modalities a, b,
+Each vector readout is reduced with PCA (fitted on the training folds) before the probe; `yes_probability` is also
+read raw, with no probe, as the model's own risk score. For every pair of modalities a, b,
 `pairwise_dominance` reports (b − a) / (|a| + |b|) per measure, in [−1, 1]: +1 only b matters, −1 only a.
 
 ---
@@ -191,7 +218,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh && source ~/.local/bin/env
 git clone <repo-url> && cd mimic-multimodal-discordance
 uv sync                                  # core only: define, analyse, compare (no torch)
 ```
-Create `mmd.toml` in the repository root. It is git-ignored, and the `[mmd]` header is required:
+The defaults point at this project's bucket (`gs://mimic-mmd`) and GCP project, so with access to those no
+configuration is needed. To use your own, create `mmd.toml` in the repository root (git-ignored; the `[mmd]` header
+is required) or set the matching `MMD_*` environment variables:
 ```toml
 [mmd]
 root = "gs://<bucket>"                   # everything mmd reads and writes lives under here
@@ -260,12 +289,36 @@ uv run --no-sync mmd perturb --model gemma3-4b --smoke 3          # one input pe
 uv run --no-sync mmd perturb --model gemma3-4b --plan --sec-per-record 0.6   # records to do, GPU-hours
 uv run --no-sync mmd perturb --model gemma3-4b                    # the full run, on the model's default set
 ```
-- **Read the smoke output first:** the answers should look like Yes / No, `yes_probability` should lie in (0, 1), and
-  the signal span should be found. It also reports seconds per record, for `--plan`.
+- **Read the smoke output first:** the answers should look like Yes / No, the signal span should be found (0 when the
+  signal is removed), and `yes_log_odds` should differ between inputs. A `yes_probability` of 1.0 everywhere is
+  saturation, not an error, as long as the log-odds still vary. It also reports seconds per record, for `--plan`.
+- **Weights:** `weights stage` writes an `MMD_STAGED` marker once a copy is complete; `perturb` uses the local copy
+  only when the marker is there, and otherwise loads from Hugging Face.
 - **Narrow a run:** `--modset cxr_notes`, `--levels L1`, `--strategies within_patient,matched_label_swap`,
   `--max-order 1`, `--no-factors`. Widen it later by rerunning without them; stored records are skipped.
 - **Split across GPUs:** `--shard 0/2` on one VM and `--shard 1/2` on another.
 - **Spot preemption:** start the VM again and rerun the same command; it resumes.
+
+**On Colab instead of a VM** (L4 or A100 runtime). It writes to the same bucket, so a VM can resume where Colab
+stopped; run the two on the same records at once only with `--shard`. `uv run` starts a separate process, which does
+not see the notebook's own login, so credentials go in a file and environment variables:
+```python
+from google.colab import auth; auth.authenticate_user()
+!gcloud auth login --no-launch-browser                      # for the gcloud command (weights stage)
+!gcloud auth application-default login --no-launch-browser  # for Python libraries (bucket, BigQuery)
+import os, glob
+os.environ.update(
+    GOOGLE_APPLICATION_CREDENTIALS=glob.glob('/content/.config/application_default_credentials.json')[0],
+    GOOGLE_CLOUD_PROJECT='<your-gcp-project>', GOOGLE_CLOUD_QUOTA_PROJECT='<your-gcp-project>',
+    UV_PROJECT_ENVIRONMENT='/content/.venv-hf-modern', HF_TOKEN='hf_...',
+    PATH='/root/.local/bin:' + os.environ['PATH'])
+!curl -LsSf https://astral.sh/uv/install.sh | sh
+!git clone <repo-url> /content/mmd
+%cd /content/mmd
+!uv sync --frozen --group hf-modern && uv run --no-sync mmd setup check
+```
+Then the same `weights stage` / `perturb` commands as above, with `!`. A session ends after some hours: reconnect,
+rerun this cell and the same `perturb` command, and it resumes.
 
 **Embeddings computed elsewhere.** A run folder of `chunk_*.npz` files keyed by the same record ids can be
 registered read-only with a model instead of being recomputed; its records then count as stored:

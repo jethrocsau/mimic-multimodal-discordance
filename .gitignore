@@ -1,9 +1,8 @@
 .env
 /dev
 *.DS_Store
-mmd.toml
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .ipynb_checkpoints/
-mmd/__pycache__/cohort.cpython-312.pyc
+
