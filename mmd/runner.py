@@ -68,7 +68,8 @@ def smoke(adapter, builder: SampleBuilder, records, n=3, verbose=True):
         out = adapter.forward(s)
         times.append(time.time() - t)
         row = dict(record=r, seconds=round(times[-1], 2), answer=out.get('answer_text'),
-                   yes_probability=round(float(out['yes_probability']), 4), signal_span=out.get('signal_span'))
+                   yes_probability=round(float(out['yes_probability']), 4),
+                   yes_log_odds=round(float(out.get('yes_log_odds', np.nan)), 2), signal_span=out.get('signal_span'))
         row.update({f'shape:{k}': np.shape(v) for k, v in out.items() if np.ndim(v) > 0})
         rows.append(row)
     df = pd.DataFrame(rows)

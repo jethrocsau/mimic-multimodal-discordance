@@ -83,11 +83,15 @@ def write_text(text: str, path):
 
 
 def load_npz(path, keys=None):
-    """All (or some) arrays of an .npz, read into memory in one go (works the same on gs://)."""
+    """All (or some) arrays of an .npz (works the same on gs://). With keys, only those members are fetched (the zip
+    is read by range), so a chunk's record ids come without downloading its large readouts."""
+    if keys is not None:
+        with open_(path) as f, np.load(f, allow_pickle=False) as z:
+            return {k: z[k] for k in keys if k in z.files}
     with open_(path) as f:
         buf = io.BytesIO(f.read())
     with np.load(buf, allow_pickle=False) as z:
-        return {k: z[k] for k in (keys or z.files) if k in z.files}
+        return {k: z[k] for k in z.files}
 
 
 def save_npz(arrays: dict, path):

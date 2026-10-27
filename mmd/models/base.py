@@ -11,7 +11,8 @@ return the common readouts, which is all the cross-model analysis reads (all fin
     answer_text         the decoded answer
 
 (prompt/signal mean states only where the model exposes them; OpenTSLM's stored runs have yes_probability /
-prompt_last_state / answer_mean_state), and MAY add pre-fusion vectors (encoder_mean, projector_mean, ...).
+prompt_last_state / answer_mean_state), and MAY add pre-fusion vectors (encoder_mean, projector_mean, ...) and
+yes_log_odds (log P(Yes) - log P(No): keeps the ranking where yes_probability saturates at 1.0).
 Mean swaps are optional: an adapter that can inject the cohort-mean signal sets `supports_mean` and implements
 signal_mean() and inject_mean(). extra_readouts() adds embeddings scored at feature level on every donor draw
 (pre-fusion vectors looked up by the record in the signal slot).

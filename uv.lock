@@ -1074,6 +1074,7 @@ hf-modern = [
     { name = "accelerate", version = "1.15.0", source = { registry = "https://pypi.org/simple" } },
     { name = "huggingface-hub", version = "0.36.2", source = { registry = "https://pypi.org/simple" } },
     { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" } },
+    { name = "torchvision", version = "0.29.1", source = { registry = "https://pypi.org/simple" } },
     { name = "transformers", version = "4.57.3", source = { registry = "https://pypi.org/simple" } },
 ]
 llava-med = [
@@ -1121,6 +1122,7 @@ hf-modern = [
     { name = "accelerate", specifier = ">=1.0" },
     { name = "huggingface-hub", specifier = ">=0.30" },
     { name = "torch", specifier = ">=2.4" },
+    { name = "torchvision" },
     { name = "transformers", specifier = ">=4.53,<5" },
 ]
 llava-med = [
@@ -2441,9 +2443,9 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
-    { name = "pillow", marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
-    { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-opentslm' or (extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med')" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "pillow", marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
+    { name = "torch", version = "2.14.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-3-mmd-hf-modern' or extra == 'group-3-mmd-opentslm'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f3/f8/855c7b326ed17a8dac4a03e8e6fec33ef6728e4baa00d816cf1227bb6681/torchvision-0.29.1-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:3b6eb9d2f8fe9b93d9d37637749df361efeed133d96ddd503184a1b5b12bb27f", size = 1813847, upload-time = "2026-09-30T17:57:01.009Z" },

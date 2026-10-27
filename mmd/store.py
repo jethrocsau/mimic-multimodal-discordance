@@ -18,11 +18,13 @@ are renamed on load, so imported notebook chunks and new chunks read as one set 
 import re
 import subprocess
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Callable, Dict, Iterable, Optional
 
 import numpy as np
 import pandas as pd
+from tqdm.auto import tqdm
 
 from . import fsio
 
@@ -95,15 +97,18 @@ class EmbeddingStore:
             return [r for r in fsio.read_text(side).split('\n') if r]
         return fsio.load_npz(path, keys=['record'])['record'].tolist()
 
-    def chunk_records(self) -> Dict[str, list]:
-        """chunk path -> its record ids."""
-        out = {}
-        for p in self.paths():
+    def chunk_records(self, workers=16) -> Dict[str, list]:
+        """chunk path -> its record ids (read in parallel: on gs:// each is a small ranged read)."""
+        def read(p):
             try:
-                out[p] = self.records_of(p)
+                return p, self.records_of(p)
             except Exception as e:                      # a chunk from a killed run
                 print(f"  ! unreadable, remove it by hand and re-run: {p} ({e})")
-        return out
+                return p, None
+        paths = self.paths()
+        with ThreadPoolExecutor(workers) as ex:
+            got = list(tqdm(ex.map(read, paths), total=len(paths), desc='chunk record ids', disable=len(paths) < 20))
+        return {p: r for p, r in got if r is not None}
 
     def done(self) -> set:
         return {r for recs in self.chunk_records().values() for r in recs}

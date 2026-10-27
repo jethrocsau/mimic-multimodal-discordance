@@ -42,14 +42,15 @@ def readouts_from_generate(torch, gen, L, span, yes_ids, no_ids, tok):
     """Common readouts from generate(..., return_dict_in_generate, output_hidden_states, output_logits)."""
     hs = gen.hidden_states[0][-1][0].float()                       # (L, H) prefill, final layer
     logits = (gen.logits if getattr(gen, 'logits', None) is not None else gen.scores)[0][0].float()
-    p_yes = torch.sigmoid(torch.logsumexp(logits[yes_ids], 0) - torch.logsumexp(logits[no_ids], 0))
+    log_odds = torch.logsumexp(logits[yes_ids], 0) - torch.logsumexp(logits[no_ids], 0)
+    p_yes = torch.sigmoid(log_odds)                                 # saturates to 1.0 past ~17; log_odds does not
     new = gen.sequences[0, L:].tolist()
     eos = {tok.eos_token_id} if tok.eos_token_id is not None else set()
     n_ans = next((i for i, t in enumerate(new) if t in eos), len(new))
     # hidden_states[t] (t >= 1) is the step that consumed generated token t-1
     states = [gen.hidden_states[t][-1][0, -1].float() for t in range(1, min(n_ans, len(gen.hidden_states) - 1) + 1)]
     nan = torch.full((hs.shape[1],), float('nan'))
-    return dict(yes_probability=float(p_yes), prompt_last_state=to_np(hs[-1]), prompt_mean_state=to_np(hs.mean(0)),
+    return dict(yes_probability=float(p_yes), yes_log_odds=float(log_odds), prompt_last_state=to_np(hs[-1]), prompt_mean_state=to_np(hs.mean(0)),
                 signal_mean_state=to_np(hs[span[0]:span[1]].mean(0)) if span else to_np(nan),
                 answer_mean_state=to_np(torch.stack(states).mean(0) if states else hs[-1]),
                 answer_text=tok.decode(new[:n_ans], skip_special_tokens=True).strip(),

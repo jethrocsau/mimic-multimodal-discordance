@@ -35,6 +35,7 @@ from .store import EmbeddingStore, repo_ref
 
 TABLES = ['summary_clean', 'auroc', 'auroc_by_draw', 'reference_shifts', 'reliance', 'pairwise_dominance',
           'temporal', 'selftest', 'informativeness']
+STAGED = 'MMD_STAGED'          # written last by `weights stage`: the weights folder is complete
 
 
 class Zoo:
@@ -125,17 +126,20 @@ class Zoo:
         return idx
 
     def stage_weights(self, model: str, local='~/.cache/mmd/weights') -> str:
-        """Pinned weights: from the bucket if staged before, else from Hugging Face (then copied to the bucket)."""
+        """Pinned weights: from the bucket if staged before, else from Hugging Face (then copied to the bucket).
+        A copy counts as staged only once its STAGED marker is written, so an interrupted copy is redone."""
         import subprocess
         A = get(model)
         remote = self.cfg.weights_dir(model, A.revision)
         dst = f'{os.path.expanduser(local)}/{model}@{A.revision}'
-        if fsio.exists(f'{remote}/config.json'):
+        if fsio.exists(f'{remote}/{STAGED}'):
             subprocess.run(['gcloud', 'storage', 'rsync', '-r', remote, dst], check=True)
         else:
             from huggingface_hub import snapshot_download
             snapshot_download(A.hf_id, revision=A.revision, local_dir=dst)
             subprocess.run(['gcloud', 'storage', 'rsync', '-r', dst, remote], check=True)
+            fsio.write_text(A.hf_id, f'{remote}/{STAGED}')
+            fsio.write_text(A.hf_id, f'{dst}/{STAGED}')
         return dst
 
     def perturb(self, model: str, modset=None, levels=None, strategies=None, max_order=None, factors=True,
@@ -152,8 +156,10 @@ class Zoo:
             return runner.plan(store, recs, sec_per_record, shard)
         adapter = A(self.cfg)
         local = f'{os.path.expanduser(weights)}/{model}@{A.revision}'
-        if os.path.isdir(local):
+        if os.path.exists(f'{local}/{STAGED}'):
             adapter.hf_id = local
+        elif os.path.isdir(local):
+            print(f'! {local} is not a complete `weights stage` copy; loading {A.hf_id} from Hugging Face instead')
         tables = Tables(self.cfg)
         loaders = signal_loaders(tables, ms.mods)
         notes = NotesLoader(tables.get('x_notes'), max_chars=self.cfg.note_chars, keep_sections=True)

@@ -46,6 +46,7 @@ llava-med = [
 ]
 hf-modern = [
     "torch>=2.4",
+    "torchvision",              # Qwen2.5-VL's processor loads a video processor that needs it
     "transformers>=4.53,<5",
     "accelerate>=1.0",
     "huggingface_hub>=0.30",
