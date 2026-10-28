@@ -10,7 +10,7 @@ mmd/config.py); --cohort overrides the cohort version, --define adds modality se
     mmd perturb --model gemma3-4b [--modset cxr_notes] [--smoke 3 | --plan] [--levels L1]
                 [--strategies within_patient,matched_label_swap] [--max-order 1] [--shard 0/2]
     mmd analyse --model gemma3-4b [--modset cxr_notes]
-    mmd compare-notebook --model llava-med --notebook-dir gs://<bucket>/emb/legacy/llava-med-v1.5-swap4
+    mmd compare-notebook --model llava-med --notebook-dir gs://<bucket>/v1/emb/llava-med/imported/swap4
     mmd zoo --modset cxr_notes [--models llava-med,gemma3-4b] [--exclude-exposed] [--split-file <csv>]
     mmd collect
     mmd status --modset cxr_notes
@@ -114,7 +114,7 @@ def setup_llava(commit: str = typer.Option(None, help='LLaVA-Med commit the exis
 # ── data ───────────────────────────────────────────────────────
 @data_app.command('stage')
 def data_stage(cohort: Optional[str] = CohortOpt):
-    """BigQuery phase0 tables -> parquet snapshot under {root}/data/<cohort_version>/."""
+    """BigQuery phase0 tables -> parquet snapshot under {root}/<cohort_version>/data/."""
     from .data import stage
     stage(_cfg(cohort))
 
@@ -150,7 +150,7 @@ def cohort_build(modset: str = ModsetOpt, cohort: Optional[str] = CohortOpt, def
 # ── index and weights ────────────────────────────────────────────────────────
 @index_app.command('import')
 def index_import(model: str = typer.Option(...),
-                 run_folder: str = typer.Option(..., help='notebook run folder, e.g. gs://<bucket>/emb/legacy/<run> '
+                 run_folder: str = typer.Option(..., help='notebook run folder, e.g. gs://<bucket>/v1/emb/<model>/imported/<run> '
                                                          '(read only)'),
                  modset: Optional[str] = ModelModsetOpt, cohort: Optional[str] = CohortOpt,
                  define: List[str] = DefineOpt,
@@ -159,6 +159,12 @@ def index_import(model: str = typer.Option(...),
                                                            'pre-fusion vectors up in (OpenTSLM: sp-prefix, flamingo)')):
     """Register a notebook run folder as a read-only source of a model and index it. Nothing is written into it."""
     _run(_zoo(cohort, define).import_notebook_run, model, run_folder, modset, mean_from, lookup)
+
+
+@index_app.command('rebuild')
+def index_rebuild(model: str = typer.Option(...), cohort: Optional[str] = CohortOpt):
+    """Re-list a model's stored chunks into a fresh index (after its folder was copied or moved)."""
+    _run(_zoo(cohort).rebuild_index, model)
 
 
 @weights_app.command('stage')
@@ -201,7 +207,7 @@ def analyse(model: str = typer.Option(...), modset: Optional[str] = ModelModsetO
 @app.command('compare-notebook')
 def compare_notebook(model: str = typer.Option(...),
                      notebook_dir: str = typer.Option(..., help="the notebook run folder holding its swap4_*.csv "
-                                                                "tables, e.g. gs://<bucket>/emb/legacy/swap4"),
+                                                                "tables, e.g. gs://<bucket>/v1/emb/opentslm-sp/imported/notebook"),
                      modset: Optional[str] = ModelModsetOpt, cohort: Optional[str] = CohortOpt,
                      define: List[str] = DefineOpt):
     """Check `mmd analyse` reproduces the notebook: matched rows and max |difference| per column, per table."""
@@ -246,7 +252,7 @@ def bq_link(modset: str = ModsetOpt, cohort: Optional[str] = CohortOpt, dataset:
     client = bigquery.Client(project=cfg.project, location=cfg.location)
     for k in TABLES:
         ext = bigquery.ExternalConfig('PARQUET')
-        ext.source_uris = [cfg._p('results', cfg.cohort_version, f'*/{modset}/{k}.parquet')]
+        ext.source_uris = [cfg._v('results', f'*/{modset}/{k}.parquet')]
         t = bigquery.Table(f'{cfg.project}.{dataset}.{k}_{cfg.cohort_version}_{modset}')
         t.external_data_configuration = ext
         client.create_table(t, exists_ok=True)

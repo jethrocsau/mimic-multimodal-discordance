@@ -1,6 +1,6 @@
 """EmbeddingStore: one model's stored readouts, a folder of chunk .npz files (local or gs://), plus its index.
 
-A run folder (`emb/<cohort_version>/<model>/`) holds
+A run folder (`<cohort_version>/emb/<model>/`) holds
     chunk_*.npz (+ .records.txt)   readouts of a block of records: arrays keyed by name, plus `record`
     index.parquet                  record -> chunk, row (a cache, rebuilt from the chunks' record lists)
     runs.parquet                   one row per generation run (code commit, cohort hash, timing)

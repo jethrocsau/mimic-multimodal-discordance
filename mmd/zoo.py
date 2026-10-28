@@ -99,7 +99,7 @@ class Zoo:
     # ── run: records -> adapter -> store ─────────────────────────────────────
     def import_notebook_run(self, model: str, run_folder: str, modset=None, mean_from=None,
                             lookups: Iterable[str] = ()):
-        """Register a notebook run folder (copied from Drive to emb/legacy/) as a read-only source of a model and
+        """Register a notebook run folder (e.g. copied to <version>/emb/<model>/imported/<run>/) as a read-only source of a model and
         index it, so its stored embeddings count and are never regenerated. Nothing is written into the folder."""
         A, ms = self.check(model, modset)
         run_dir = self.cfg.emb_dir(model)
@@ -123,6 +123,20 @@ class Zoo:
         print(f'{len(idx):,} stored records indexed ({known.sum():,} in the {ms.name} manifest, {(~known).sum():,} not)')
         if (~known).any():
             print('  not in the manifest, e.g.', idx.record[~known].head(3).tolist())
+        return idx
+
+    def rebuild_index(self, model: str) -> pd.DataFrame:
+        """Re-list a model's chunks (its own folder plus the folders in its sources.json) into a fresh index, keeping
+        each record's run_ref. Needed after the store is copied or moved: the index holds full chunk paths."""
+        A = get(model)
+        store = EmbeddingStore.for_model(self.cfg.emb_dir(model), A.keymap)
+        before = store.load_index()
+        idx = store.build_index()
+        if 'run_ref' in before and len(before):
+            idx = idx.drop(columns='run_ref').merge(before[['record', 'run_ref']].drop_duplicates('record'),
+                                                    on='record', how='left')
+        store.save_index(idx)
+        print(f'{model}: {len(idx):,} records indexed from {idx.chunk.nunique():,} chunks (was {len(before):,})')
         return idx
 
     def stage_weights(self, model: str, local='~/.cache/mmd/weights') -> str:
@@ -219,13 +233,13 @@ class Zoo:
         need = self.manifest(modset).model_configs()
         ms = self.sets[modset]
         rows = []
-        for d in fsio.glob(self.cfg._p('emb', self.cfg.cohort_version, '*')):
+        for d in fsio.glob(self.cfg._v('emb', '*')):
             name = d.rstrip('/').split('/')[-1]
             try:
                 if not ms.fits(get(name).modalities):
                     continue                                # a model that cannot take this set
             except KeyError:
-                pass                                        # not a registered model: show it
+                continue                                    # not a model (e.g. encoders/)
             have = set(EmbeddingStore(d).load_index().record)
             for fam, g in need.groupby('family'):
                 rows.append(dict(model=name, family=fam, records=g.record.nunique(),
@@ -307,7 +321,7 @@ class Zoo:
 
     def collect(self) -> dict:
         """Stack every model x set's tables into one long table per kind -> results/<version>/all/<kind>."""
-        base = self.cfg._p('results', self.cfg.cohort_version)
+        base = self.cfg._v('results')
         runs = [p.rstrip('/').split('/')[-3:-1] for p in fsio.glob(f'{base}/*/*/model.json')]
         out = {}
         for kind in TABLES:

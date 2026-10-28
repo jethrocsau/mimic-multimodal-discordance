@@ -49,27 +49,31 @@ class Config:
     def _p(self, *parts):
         return '/'.join([self.root.rstrip('/')] + [str(p).strip('/') for p in parts])
 
+    def _v(self, *parts):
+        """Under this cohort version's folder, {root}/<cohort_version>/: everything a version derives."""
+        return self._p(self.cohort_version, *parts)
+
     @property
     def raw(self):
         return self.raw_root or self._p('physionet')
 
     def data_dir(self):
-        return self._p('data', self.cohort_version)
+        return self._v('data')
 
     def cohort_dir(self, modset):
-        return self._p('cohort', self.cohort_version, modset)
+        return self._v('cohort', modset)
 
     def emb_dir(self, model):
-        return self._p('emb', self.cohort_version, model)
+        return self._v('emb', model)
 
     def results_dir(self, model, modset):
-        return self._p('results', self.cohort_version, model, modset)
+        return self._v('results', model, modset)
 
     def zoo_dir(self):
-        return self._p('results', self.cohort_version, 'zoo')
+        return self._v('results', 'zoo')
 
     def fig_dir(self, model, modset):
-        return self._p('figures', self.cohort_version, model, modset)
+        return self._v('figures', model, modset)
 
     def weights_dir(self, model, revision):
         return self._p('weights', f'{model}@{revision}')
