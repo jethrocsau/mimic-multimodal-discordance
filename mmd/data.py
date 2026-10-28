@@ -1,7 +1,7 @@
 """The phase0 tables, the slot tables (which record fills each modality's first / last slot), the raw files
 behind each record, and the radiology notes.
 
-Tables come from the frozen parquet snapshot in `{root}/data/<cohort_version>/` (written by `mmd data stage`
+Tables come from the frozen parquet snapshot in `{root}/<cohort_version>/data/` (written by `mmd data stage`
 from BigQuery, or copied there from Drive). Raw files (CXR JPG, ECG WFDB) are resolved as
 `{raw}/<physionet_project>/<version>/<relative_path>`, which matches the Drive `unpacked/` layout, a GCS mirror
 of it, or a PhysioNet bucket. Note text is read at run time and never written to the store.

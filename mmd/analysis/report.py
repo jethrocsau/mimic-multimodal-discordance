@@ -1,6 +1,6 @@
 """One model's full analysis on one modality set: probe -> effect tables -> charts.
 
-Tables go to `results/<cohort_version>/<model>/<modset>/<table>.csv|parquet`, charts to `figures/` with the same
+Tables go to `<cohort_version>/results/<model>/<modset>/<table>.csv|parquet`, charts to `figures/` with the same
 layout. Every table carries `model`, so the tables of all models stack (`mmd collect`, `mmd bq link`).
 
     summary, summary_clean, per_stay      Δ per family and slot (per_stay: every probe score, long)

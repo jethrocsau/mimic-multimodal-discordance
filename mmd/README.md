@@ -259,7 +259,7 @@ uv run mmd modsets                       # sets, which models can run each, inpu
 
 ### Step 1: define (CPU)
 ```bash
-uv run mmd data stage                    # BigQuery cohort tables -> {root}/data/v1/*.parquet
+uv run mmd data stage                    # BigQuery cohort tables -> {root}/v1/data/*.parquet
 uv run mmd cohort build --modset cxr_notes
 uv run mmd cohort build --modset ecg_notes
 uv run mmd cohort build --modset cxr_ecg_notes --define cxr_ecg_notes=e,x,n --strategies all --max-order 2
@@ -345,7 +345,7 @@ readout × classifier × tier and writes the tables and figures. Records not sto
 ### Step 4: compare
 ```bash
 uv run mmd zoo --modset cxr_notes [--models llava-med,gemma3-4b] [--split-file <mimic-cxr-2.0.0-split.csv.gz>]
-uv run mmd collect                       # every model × set stacked into results/v1/all/<table>
+uv run mmd collect                       # every model × set stacked into v1/results/all/<table>
 uv run mmd bq link --modset cxr_notes    # optional: BigQuery external tables over the parquet results
 ```
 `--split-file` adds a row per model restricted to stays whose baseline film is outside the MIMIC-CXR training split.
@@ -365,21 +365,30 @@ zoo.table(modset='cxr_notes')                     # info_share, reliance_share, 
 
 ## 5. Where everything goes
 Everything lives under `root`, so every machine with access to the bucket sees the same state, and VMs can be deleted
-without losing anything.
+without losing anything. Raw files and weights are shared; everything derived sits under one folder per cohort
+version (`cohort_version`, default `v1`), so a new version never mixes with an old one.
 ```
-physionet/<project>/<version>/...             raw CXR JPG / ECG files (you upload; raw_root)
-data/<version>/*.parquet                      cohort tables snapshot                   ← data stage
-cohort/<version>/<set>/                       slots, tiers + folds, donor plans,       ← cohort build
-                                              configs.parquet, manifest.json (hash)
-emb/<version>/<model>/                        chunk_*.npz (+ .records.txt), index,     ← perturb / index import
-                                              runs.parquet, manifest.json (hash per set),
-                                              cohort_mean_<mod>_<set>.npz, sources.json
-weights/<model>@<revision>/                   pinned weights                           ← weights stage
-results/<version>/<model>/<set>/              model.json + tables (.csv and .parquet)  ← analyse
-figures/<version>/<model>/<set>/*.png         reference_shifts_*, auroc_*, temporal_*, reliance_*
-results/<version>/zoo/<set>.csv|parquet       the cross-model table                    ← zoo
-results/<version>/all/<table>.csv|parquet     every model × set stacked                ← collect
+physionet/<project>/<version>/...        raw CXR JPG / ECG files (you upload; raw_root)
+weights/<model>@<revision>/              pinned weights                                   ← weights stage
+v1/
+  data/*.parquet                         cohort tables snapshot                           ← data stage
+  cohort/<set>/                          slots, tiers + folds, donor plans,               ← cohort build
+                                         configs.parquet, manifest.json (hash)
+  emb/<model>/                           chunk_*.npz (+ .records.txt), index.parquet,     ← perturb
+                                         runs.parquet, manifest.json (hash per set),
+                                         cohort_mean_<mod>_<set>.npz, sources.json
+  emb/<model>/imported/<run>/            runs made outside mmd, read only                 ← index import
+  emb/<model>/lookups/<name>/            single-signal runs read for pre-fusion vectors   ← index import --lookup
+  emb/encoders/<encoder>/                single-modality encoder embeddings (not read by mmd yet)
+  results/<model>/<set>/                 model.json + tables (.csv and .parquet)          ← analyse
+  results/zoo/<set>.csv|parquet          the cross-model table                            ← zoo
+  results/all/<table>.csv|parquet        every model × set stacked                        ← collect
+  figures/<model>/<set>/*.png            reference_shifts_*, auroc_*, temporal_*, reliance_*
 ```
+`emb/<model>/index.parquet` and `sources.json` hold full paths. After copying or moving a version folder, run
+`mmd index rebuild --model <model>` for each model (and re-run `index import` for imported runs at their new
+paths) before analysing.
+
 The store holds derived data only (embeddings, scores, record ids, results). Note text, images and signals are read
 at run time and never written there, as the MIMIC data use agreement requires.
 
