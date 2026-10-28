@@ -296,6 +296,10 @@ uv run --no-sync mmd perturb --model gemma3-4b                    # the full run
   only when the marker is there, and otherwise loads from Hugging Face.
 - **Narrow a run:** `--modset cxr_notes`, `--levels L1`, `--strategies within_patient,matched_label_swap`,
   `--max-order 1`, `--no-factors`. Widen it later by rerunning without them; stored records are skipped.
+- **Batch:** `--batch 8` runs 8 records per forward pass (Gemma 3, Qwen2.5-VL, OpenTSLM; LLaVA-Med always runs
+  one at a time, as its stored runs did). Check it first with `--smoke 3 --batch 8`, which compares batched and
+  single-record readouts and prints `OK to batch`. Keep one batch setting for a model's whole run; the run log
+  records it. If a batch fails (e.g. out of GPU memory) its records are retried one at a time.
 - **Split across GPUs:** `--shard 0/2` on one VM and `--shard 1/2` on another.
 - **Spot preemption:** start the VM again and rerun the same command; it resumes.
 
@@ -428,7 +432,7 @@ every model on stays whose baseline film is outside the MIMIC-CXR training split
 - **Vitals and labs** have modality keys but no slot table or loader. Add a builder to `data.SLOT_BUILDERS` and a
   loader to `data.signal_loader`.
 - **First run of every model:** read the `--smoke` output (Yes / No token ids, the signal span, module names).
-- **Qwen2.5-VL:** films are resized to a fixed 448×448 so every film gives the same number of image tokens; no mean
+- **Qwen2.5-VL:** films are resized to about 448×448 pixels (aspect ratio kept), so each gives ~256 image tokens; no mean
   swap yet.
 - **Pinning:** pin `revision` for each model, and `LLAVA_MED_COMMIT`, once its smoke test passes.
 - **OpenTSLM-Gemma:** check in `--smoke` that `load_pretrained` loads the Gemma checkpoint, and check its Yes / No ids.

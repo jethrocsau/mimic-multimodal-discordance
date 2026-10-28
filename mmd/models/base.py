@@ -137,6 +137,7 @@ class Adapter:
     default_modset = 'cxr_notes'
     meta = dict(fusion='', domain='', params='', mimic_exposure='none')
     keymap: Dict[str, str] = {}       # stored key -> common key, for runs written before the common names
+    batches = False                   # forward_batch() runs several records in one pass (else one at a time)
     readouts = [                      # the embeddings the standard analysis probes
         ReadoutSpec('yes probability', 'post-fusion', 'yes_probability'),
         ReadoutSpec('answer mean state', 'post-fusion', 'answer_mean_state', 'pca'),
@@ -162,6 +163,11 @@ class Adapter:
 
     def forward(self, sample: Sample) -> dict:
         raise NotImplementedError
+
+    def forward_batch(self, samples) -> list:
+        """forward() over several samples that all carry the same modalities; an adapter that can run them in one
+        pass overrides this (hf_vlm). Must return what forward() returns, per sample, in order."""
+        return [self.forward(s) for s in samples]
 
     def describe(self) -> dict:
         """Printed by the smoke test: token ids, template, module names... anything worth checking."""
@@ -191,16 +197,39 @@ class Adapter:
                     modalities=list(cls.modalities), default_modset=cls.default_modset,
                     default_order=cls.default_order, **cls.meta)
 
-    def compute_fn(self, builder: SampleBuilder, vector_dtype=np.float16):
-        """compute(records) for EmbeddingStore.run: vectors fp16, yes_probability fp32, failures recorded."""
+    def compute_fn(self, builder: SampleBuilder, vector_dtype=np.float16, prefetch: int = 8, batch: int = 1):
+        """compute(records) for EmbeddingStore.run: vectors fp16, yes_probability fp32, failures recorded.
+        The next samples (file reads, decoding) are built in threads while the GPU runs the current ones. With
+        batch > 1, consecutive samples carrying the same modalities go through forward_batch() together; a batch
+        that fails is retried one record at a time, so one bad record never costs the others."""
         def compute(records):
-            rows, ok, errs = [], [], {}
-            for r in records:
-                try:
-                    rows.append(self.forward(builder(r)))
-                    ok.append(r)
-                except Exception as e:
-                    errs[r] = repr(e)
+            from tqdm.auto import tqdm
+            rows, ok, errs, pending = [], [], {}, []
+
+            def flush():
+                outs = None
+                if len(pending) > 1:
+                    try:
+                        outs = self.forward_batch([s for _, s in pending])
+                    except Exception:
+                        outs = None
+                for j, (r, s) in enumerate(pending):
+                    try:
+                        rows.append(outs[j] if outs is not None else self.forward(s))
+                        ok.append(r)
+                    except Exception as e:
+                        errs[r] = repr(e)
+                pending.clear()
+
+            for r, s in tqdm(_prefetched(builder, records, max(prefetch, 2 * batch)), total=len(records),
+                             desc='records', leave=False, mininterval=5):
+                if isinstance(s, Exception):
+                    errs[r] = repr(s)
+                    continue
+                if pending and (len(pending) >= batch or set(s.signals) != set(pending[0][1].signals)):
+                    flush()
+                pending.append((r, s))
+            flush()
             if not rows:
                 print('    whole chunk failed, e.g.', next(iter(errs.items()), None))
                 return dict(record=np.array([], dtype='<U1'))
@@ -220,6 +249,27 @@ class Adapter:
                 out.update(failed=np.array(list(errs)), failed_reason=np.array(list(errs.values())))
             return out
         return compute
+
+
+def _prefetched(build, items, ahead: int):
+    """Yield (item, build(item) or the exception it raised) in order, keeping `ahead` builds running in threads."""
+    from collections import deque
+    from concurrent.futures import ThreadPoolExecutor
+
+    def safe(x):
+        try:
+            return build(x)
+        except Exception as e:
+            return e
+    it = iter(items)
+    with ThreadPoolExecutor(max(1, ahead)) as pool:
+        q = deque((x, pool.submit(safe, x)) for _, x in zip(range(max(1, ahead)), it))
+        while q:
+            x, fut = q.popleft()
+            for nxt in it:
+                q.append((nxt, pool.submit(safe, nxt)))
+                break
+            yield x, fut.result()
 
 
 def _stack_vectors(key, values):

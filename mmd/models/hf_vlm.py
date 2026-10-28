@@ -33,22 +33,37 @@ def yes_no_ids(tok):
     return sorted(yes - no), sorted(no - yes)
 
 
-def token_rows(t):
-    """One image's features as (tokens, H): hooks give (B, tokens, H), or (tokens, H) for Qwen-VL's flat patches."""
-    return (t if t.dim() == 2 else t[0]).float().reshape(-1, t.shape[-1])
+def token_rows(t, i=0, sizes=None):
+    """Image i's features as (tokens, H): hooks give (B, tokens, H), or flat (all images' tokens, H) for Qwen-VL,
+    where `sizes` (tokens per image, in order) says which rows are image i's; one image takes them all."""
+    if t.dim() == 2:
+        if sizes is None:
+            return t.float()
+        start = sum(sizes[:i])
+        return t[start:start + sizes[i]].float()
+    return t[i].float().reshape(-1, t.shape[-1])
 
 
-def readouts_from_generate(torch, gen, L, span, yes_ids, no_ids, tok):
-    """Common readouts from generate(..., return_dict_in_generate, output_hidden_states, output_logits)."""
-    hs = gen.hidden_states[0][-1][0].float()                       # (L, H) prefill, final layer
-    logits = (gen.logits if getattr(gen, 'logits', None) is not None else gen.scores)[0][0].float()
+def readouts_from_generate(torch, gen, L, span, yes_ids, no_ids, tok, row=0, mask=None, stop=()):
+    """Common readouts from generate(..., return_dict_in_generate, output_hidden_states, output_logits).
+    For row `row` of a left-padded batch: `mask` (its attention mask) drops the padding, `span` is in unpadded
+    positions, and `stop` (the generation stop ids) trims the pad tokens that follow a sequence that finished early,
+    so each row gets what a single-record call would have given."""
+    hs = gen.hidden_states[0][-1][row].float()                     # (L, H) prefill, final layer
+    if mask is not None:
+        hs = hs[mask.to(hs.device)]
+    logits = (gen.logits if getattr(gen, 'logits', None) is not None else gen.scores)[0][row].float()
     log_odds = torch.logsumexp(logits[yes_ids], 0) - torch.logsumexp(logits[no_ids], 0)
     p_yes = torch.sigmoid(log_odds)                                 # saturates to 1.0 past ~17; log_odds does not
-    new = gen.sequences[0, L:].tolist()
+    new = gen.sequences[row, L:].tolist()
+    cut = next((i for i, t in enumerate(new) if t in stop), None)
+    if cut is not None:
+        new = new[:cut + 1]                                         # a single call stops here too
     eos = {tok.eos_token_id} if tok.eos_token_id is not None else set()
     n_ans = next((i for i, t in enumerate(new) if t in eos), len(new))
-    # hidden_states[t] (t >= 1) is the step that consumed generated token t-1
-    states = [gen.hidden_states[t][-1][0, -1].float() for t in range(1, min(n_ans, len(gen.hidden_states) - 1) + 1)]
+    # hidden_states[t] (t >= 1) is the step that consumed generated token t-1; one step per generated token
+    steps = min(n_ans, len(new) - 1, len(gen.hidden_states) - 1)
+    states = [gen.hidden_states[t][-1][row, -1].float() for t in range(1, steps + 1)]
     nan = torch.full((hs.shape[1],), float('nan'))
     return dict(yes_probability=float(p_yes), yes_log_odds=float(log_odds), prompt_last_state=to_np(hs[-1]), prompt_mean_state=to_np(hs.mean(0)),
                 signal_mean_state=to_np(hs[span[0]:span[1]].mean(0)) if span else to_np(nan),
@@ -59,6 +74,7 @@ def readouts_from_generate(torch, gen, L, span, yes_ids, no_ids, tok):
 
 class HFImageTextAdapter(Adapter):
     group = 'hf-modern'
+    batches = True
     torch_dtype = 'bfloat16'
     answer_tokens = 8
     answer_cue = 'Answer:'
@@ -71,10 +87,15 @@ class HFImageTextAdapter(Adapter):
         import torch
         from transformers import AutoModelForImageTextToText, AutoProcessor
         self.torch = torch
-        self.proc = AutoProcessor.from_pretrained(self.hf_id, revision=self.revision)
+        self.proc = AutoProcessor.from_pretrained(self.hf_id, revision=self.revision, use_fast=True)
         self.model = AutoModelForImageTextToText.from_pretrained(
             self.hf_id, revision=self.revision, torch_dtype=getattr(torch, self.torch_dtype), device_map=device).eval()
         self.tok = self.proc.tokenizer
+        self.tok.padding_side = 'left'      # batches: every prompt ends at the last position, where generation starts
+        gc = self.model.generation_config
+        self.stop_ids = set(gc.eos_token_id if isinstance(gc.eos_token_id, (list, tuple)) else
+                            [gc.eos_token_id] if gc.eos_token_id is not None else []) | \
+            ({gc.pad_token_id} if gc.pad_token_id is not None else set())
         self.dev = next(self.model.parameters()).device
         self.yes_ids, self.no_ids = yes_no_ids(self.tok)
         cfg = self.model.config
@@ -115,27 +136,46 @@ class HFImageTextAdapter(Adapter):
             x['pixel_values'] = x['pixel_values'].to(self.model.dtype)
         return x
 
+    def batch_images(self, images):
+        """The processor's `images` argument for a batch: one list per prompt (Gemma 3, LLaVA-HF)."""
+        return [[im] for im in images]
+
+    def inputs_batch(self, samples):
+        """Left-padded inputs for several samples that all have, or all lack, the signal."""
+        kw = dict(text=[self.prompt(s) for s in samples], return_tensors='pt', add_special_tokens=False, padding=True)
+        if samples[0].signal is not None:
+            kw['images'] = self.batch_images([s.signal for s in samples])
+        x = self.proc(**kw).to(self.dev)
+        if 'pixel_values' in x:
+            x['pixel_values'] = x['pixel_values'].to(self.model.dtype)
+        return x
+
     def _span(self, ids):
         if self.image_token_id is None:
             return None
         pos = (ids[0] == self.image_token_id).nonzero().flatten()
         return (int(pos[0]), int(pos[-1]) + 1) if len(pos) else None
 
-    def forward(self, sample: Sample) -> dict:
+    def _generate(self, x):
         torch = self.torch
         cap = {}
         grab = lambda key: (lambda m, i, o: cap.__setitem__(key, (o[0] if isinstance(o, tuple) else
                                                                    getattr(o, 'last_hidden_state', o)).detach()))
         hooks = [(m, grab(k)) for k, m in (('vision', self.vt), ('proj', self.pj)) if m is not None]
-        x = self.inputs(sample)
-        L = x['input_ids'].shape[1]
         with torch.no_grad(), _hooks(hooks):
             gen = self.model.generate(**x, max_new_tokens=self.answer_tokens, do_sample=False, use_cache=True,
                                       output_hidden_states=True, output_logits=True, return_dict_in_generate=True)
-        r = readouts_from_generate(torch, gen, L, self._span(x['input_ids']), self.yes_ids, self.no_ids, self.tok)
-        if sample.signal is not None and 'proj' in cap:
-            r['projector_mean'] = to_np(token_rows(cap['proj']).mean(0))
-            r['encoder_mean'] = to_np(token_rows(cap['vision']).mean(0)) if 'vision' in cap \
+        return gen, cap
+
+    def image_token_counts(self, x):
+        """Tokens per image in a batch's flat projector output, or None when it comes out (B, tokens, H)."""
+        return None
+
+    def _prefusion(self, r, cap, has_signal, i=0, sizes=None):
+        """encoder_mean / projector_mean of image i (NaN of the right width without a signal)."""
+        if has_signal and 'proj' in cap:
+            r['projector_mean'] = to_np(token_rows(cap['proj'], i, sizes).mean(0))
+            r['encoder_mean'] = to_np(token_rows(cap['vision'], i, sizes).mean(0)) if 'vision' in cap \
                 else np.full(1, np.nan, np.float32)
         else:
             h = self.model.config.get_text_config().hidden_size if hasattr(self.model.config, 'get_text_config') \
@@ -144,6 +184,30 @@ class HFImageTextAdapter(Adapter):
             vh = getattr(getattr(self.model.config, 'vision_config', None), 'hidden_size', 1)
             r['encoder_mean'] = np.full(vh, np.nan, np.float32)
         return r
+
+    def forward(self, sample: Sample) -> dict:
+        x = self.inputs(sample)
+        gen, cap = self._generate(x)
+        r = readouts_from_generate(self.torch, gen, x['input_ids'].shape[1], self._span(x['input_ids']),
+                                   self.yes_ids, self.no_ids, self.tok)
+        return self._prefusion(r, cap, sample.signal is not None)
+
+    def forward_batch(self, samples) -> list:
+        """forward() for several samples in one generate() call. The samples must all have, or all lack, the signal
+        (compute_fn groups them so). Same keys and shapes as forward(); values match it up to bf16 rounding."""
+        if len(samples) == 1:
+            return [self.forward(samples[0])]
+        x = self.inputs_batch(samples)
+        gen, cap = self._generate(x)
+        L, ids, att = x['input_ids'].shape[1], x['input_ids'], x['attention_mask'].bool()
+        has = samples[0].signal is not None
+        sizes = self.image_token_counts(x) if has else None
+        out = []
+        for i in range(len(samples)):
+            r = readouts_from_generate(self.torch, gen, L, self._span(ids[i][att[i]].unsqueeze(0)), self.yes_ids,
+                                       self.no_ids, self.tok, row=i, mask=att[i], stop=self.stop_ids)
+            out.append(self._prefusion(r, cap, has, i, sizes))
+        return out
 
     # ── mean swap: the projector output replaced by the cohort mean ──────────
     def signal_mean(self, images, mod=None, batch=8):

@@ -179,11 +179,13 @@ def perturb(model: str = typer.Option(...), modset: Optional[str] = ModelModsetO
             plan: bool = typer.Option(False, '--plan', help='only print records / to do / GPU-hours'),
             sec_per_record: float = typer.Option(None, help='for --plan; measured by --smoke'),
             shard: str = typer.Option('', help='k/n'), device: str = 'cuda',
-            weights: str = typer.Option('~/.cache/mmd/weights', help='local weights folder from `weights stage`')):
+            weights: str = typer.Option('~/.cache/mmd/weights', help='local weights folder from `weights stage`'),
+            batch: int = typer.Option(1, help='records per forward pass; with --smoke, also checks batched '
+                                              'against single-record readouts')):
     """Generate a model's missing perturbation records into its run folder, then refresh the index."""
     out = _run(_zoo(cohort, define).perturb, model, modset, _list(levels), _list(strategies), max_order, factors,
                smoke, plan, sec_per_record, tuple(int(x) for x in shard.split('/')) if shard else None, device,
-               weights)
+               weights, batch)
     if plan:
         print(out.to_string(index=False))
 

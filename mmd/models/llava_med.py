@@ -4,7 +4,8 @@ Runs in the `llava-med` uv group, after `mmd setup llava-med` (the LLaVA-Med rep
 It writes the common names; `keymap` renames the keys the notebook's chunks use (post_image, vision_*, proj_*)
 on load, so imported notebook records and new records sit in one store and one analysis.
 
-One record at a time (no padding questions at all), one prefill, then a short greedy continuation:
+One record at a time (no padding questions at all), as the stored notebook runs were, so `perturb --batch` does
+not batch it. One prefill, then a short greedy continuation:
     encoder_mean / encoder_grid       CLIP patch features (576, Cv): mean, and pooled to grid x grid
     projector_mean / projector_grid   mm_projector output (576, H): the soft tokens entering the LLM
     prompt_last_state / signal_mean_state / prompt_mean_state   final-layer prompt states: last / image span / all

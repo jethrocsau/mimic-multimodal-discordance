@@ -268,10 +268,12 @@ class LeakageAudit:
 
 
 class ImageLoader:
-    """dicom_id -> PIL image, from a local path or gs://."""
+    """dicom_id -> PIL image, from a local path or gs://. Recent images are kept in memory: a film is reused by
+    many records (the recipient's own arms, and as a donor), so most reads after the first are cache hits."""
 
-    def __init__(self, paths: dict):
+    def __init__(self, paths: dict, cache: int = 64):
         self.paths = paths
+        self.load = lru_cache(maxsize=cache)(self._load)
 
     def path(self, dicom_id):
         p = self.paths.get(dicom_id)
@@ -279,7 +281,7 @@ class ImageLoader:
             raise KeyError(f'no image file for {dicom_id}')
         return p
 
-    def load(self, dicom_id):
+    def _load(self, dicom_id):
         from PIL import Image
         with fsio.open_(self.path(dicom_id)) as f:
             return Image.open(f).convert('RGB')

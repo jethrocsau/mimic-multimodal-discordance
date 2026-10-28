@@ -11,8 +11,8 @@ the report sits in the clinical-context block, BEFORE the series. So `~order=fli
 series (into the post-prompt), and `~para=k` swaps in prompts.QUESTIONS[k] (k = 0 is the notebook question).
 
 Differences from the notebook pass, both numerical only:
-  - one record per forward (the notebook left-padded batches of 4), so new records can differ from stored
-    ones in the last float digits;
+  - one record per forward by default; `perturb --batch 4` left-pads batches as the notebook did. Either way new
+    records can differ from stored ones in the last float digits (bf16, and batch composition);
   - none in the cohort: slot tables, donors and records come from the same manifest.
 
 Pre-fusion embeddings come from the notebook's separate single-ECG runs (prefix_mean of the SP run, read as
@@ -88,6 +88,7 @@ class OpenTSLMSP(Adapter):
     hf_id = 'OpenTSLM/llama-3.2-1b-ecg-sp'
     revision = 'main'
     group = 'opentslm'
+    batches = True
     signal, modalities, default_modset = 'ecg', ('e', 'n'), 'ecg_notes'
     meta = dict(fusion='prefix (soft prompt)', domain='time series', params='1B', mimic_exposure='none',
                 base='llama-3.2-1b')
@@ -141,8 +142,13 @@ class OpenTSLMSP(Adapter):
 
     def forward(self, sample: Sample) -> dict:
         """AnswerExtractor.run for one SP record: P(Yes) at "Answer:", the state there, the answer-span mean."""
+        return self.forward_batch([sample])[0]
+
+    def forward_batch(self, samples) -> list:
+        """AnswerExtractor.run over records that all have, or all lack, the ECG: one generate() call, the rows
+        left-padded as the notebook's batches were. One record takes no padding at all."""
         torch = self.torch
-        s = self.sample_dict(sample)
+        ss = [self.sample_dict(s) for s in samples]
         steps = []
         grab = lambda m, i, o: steps.append((o.last_hidden_state if hasattr(o, 'last_hidden_state') else o[0]).detach())
         proj = []
@@ -151,11 +157,16 @@ class OpenTSLMSP(Adapter):
         with torch.no_grad():
             hp = self.model.projector.register_forward_hook(lambda m, i, o: proj.append(o.detach().float()))
             try:
-                e, a = self.model.pad_and_apply_batch([s])
+                e, a = self.model.pad_and_apply_batch(ss)
             finally:
                 hp.remove()
-            embeds = e[0][a[0].bool()][None]
-            attn = torch.ones(embeds.shape[:2], dtype=torch.long, device=embeds.device)
+            rows = [e[i][a[i].bool()] for i in range(len(ss))]           # each record's own positions
+            L = max(r.shape[0] for r in rows)
+            embeds = e.new_zeros(len(rows), L, e.shape[-1])
+            attn = torch.zeros(len(rows), L, dtype=torch.long, device=e.device)
+            for i, r in enumerate(rows):                                  # left padding: all end at "Answer:"
+                embeds[i, L - r.shape[0]:] = r
+                attn[i, L - r.shape[0]:] = 1
             h = self._decoder(self.model).register_forward_hook(grab)
             try:
                 out = self.model.llm.generate(inputs_embeds=embeds, attention_mask=attn, **kw)
@@ -176,13 +187,19 @@ class OpenTSLMSP(Adapter):
             ans_emb = (hs * m).sum(1) / m.sum(1).clamp(min=1)
         else:
             ans_emb = ans_last
-        cpu = lambda t: t[0].float().cpu().numpy()
-        out = dict(yes_probability=float(p_yes[0]), prompt_last_state=cpu(ans_last), answer_mean_state=cpu(ans_emb),
-                   answer_text=self.tok.batch_decode(gen_ids, skip_special_tokens=True)[0].strip())
-        if self.store_prefix:                    # (K, P, H) for the record's leads; NaN when there is no ECG
-            out['projector_mean'] = (proj[0].reshape(-1, proj[0].shape[-1]).mean(0).cpu().numpy() if proj
-                                  else np.full(self.hidden, np.nan, np.float32))
-        return out
+        texts = self.tok.batch_decode(gen_ids, skip_special_tokens=True)
+        # projector output: (B*K, P, H) lead-major per record, in one call or one per record; same K leads each
+        prefix = torch.cat(proj).reshape(len(ss), -1, proj[0].shape[-1]) if proj else None
+        res = []
+        for i in range(len(ss)):
+            cpu = lambda t: t[i].float().cpu().numpy()
+            r = dict(yes_probability=float(p_yes[i]), prompt_last_state=cpu(ans_last), answer_mean_state=cpu(ans_emb),
+                     answer_text=texts[i].strip())
+            if self.store_prefix:                # mean over the record's (K, P) prefix; NaN when there is no ECG
+                r['projector_mean'] = (prefix[i].mean(0).cpu().numpy() if prefix is not None
+                                       else np.full(self.hidden, np.nan, np.float32))
+            res.append(r)
+        return res
 
     # ── mean swap (MeanEncoder, SP) ──────────────────────────────────────────
     def signal_mean(self, bundles, mod=None, batch=8):

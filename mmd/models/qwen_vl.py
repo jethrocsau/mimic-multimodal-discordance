@@ -2,15 +2,17 @@
 2x2 by `visual.merger` into LLM tokens placed at the image pad tokens.
 
 Differences from the Gemma-style models in hf_vlm:
-- the image token count depends on resolution, so every film is resized to one fixed size (FIXED_PIXELS);
-- the processor takes a flat image list, and the vision features come out flat (tokens, H) (hf_vlm.token_rows);
+- the image token count depends on resolution, so every film is resized to about the same pixel count
+  (FIXED_PIXELS, aspect ratio kept): ~256 merged tokens, varying a little with the film's shape;
+- the processor takes a flat image list, and the vision features come out flat (all images' tokens, H), split
+  per image by image_grid_thw (image_token_counts);
 - `visual` already ends in the merger, so the encoder readout is skipped (it would equal the projector's);
 - no mean swap yet: the merger needs image_grid_thw, so a cohort-mean projector output is not wired in.
 """
 from .base import register
 from .hf_vlm import HFImageTextAdapter, find_module
 
-FIXED_PIXELS = 448 * 448             # 16x16 merged tokens per film
+FIXED_PIXELS = 448 * 448             # ~16x16 merged tokens per film (aspect ratio kept)
 
 
 @register
@@ -31,6 +33,13 @@ class Qwen25VL7B(HFImageTextAdapter):
         self.vt_name, self.vt = None, None
         self.pj_name, self.pj = find_module(self.model, 'visual.merger')
         return self
+
+    def batch_images(self, images):
+        return list(images)               # flat: one image per prompt, matched to the image pads in order
+
+    def image_token_counts(self, x):
+        merge = self.model.config.vision_config.spatial_merge_size
+        return (x['image_grid_thw'].prod(-1) // merge ** 2).tolist()
 
     def inputs(self, sample):
         kw = dict(text=[self.prompt(sample)], return_tensors='pt', add_special_tokens=False)

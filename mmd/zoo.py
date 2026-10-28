@@ -144,7 +144,7 @@ class Zoo:
 
     def perturb(self, model: str, modset=None, levels=None, strategies=None, max_order=None, factors=True,
                 smoke: int = 0, plan=False, sec_per_record=None, shard=None, device='cuda',
-                weights='~/.cache/mmd/weights'):
+                weights='~/.cache/mmd/weights', batch: int = 1):
         """Generate a model's missing records for one modality set into its run folder, then refresh the index.
         strategies / max_order narrow the manifest's configurations (default: all of them)."""
         from .data import NotesLoader, Tables, signal_loaders
@@ -166,7 +166,7 @@ class Zoo:
         builder = SampleBuilder(man, loaders, notes)
         adapter.load(device)
         if smoke:
-            return runner.smoke(adapter, builder, recs, n=smoke)[0]
+            return runner.smoke(adapter, builder, recs, n=smoke, batch=batch)[0]
         store.record_cohort(A.info(), ms.name, man.hash)
 
         def reference_signals(mod):
@@ -177,7 +177,8 @@ class Zoo:
                 except Exception as e:
                     print('  skip', d, repr(e))
         return runner.run(adapter, man, store, builder, recs, self.cfg, shard=shard,
-                          reference_signals=lambda mod: list(reference_signals(mod)), run_ref=repo_ref())
+                          reference_signals=lambda mod: list(reference_signals(mod)), run_ref=repo_ref(),
+                          batch=batch)
 
     # ── analyse ──────────────────────────────────────────────────────────────
     def analyse(self, model: str, modset=None, strategies=None, charts=True, selftest=True):
