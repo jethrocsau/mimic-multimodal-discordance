@@ -20,7 +20,7 @@ For a two-modality set the note rows equal the notebooks' info_share_note / reli
 recomputed from the per-stay tables; `exclude_exposed` drops models trained on MIMIC data.
 """
 import os
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 import numpy as np
 import pandas as pd
@@ -34,7 +34,7 @@ from .perturb import build_manifest, count_configs
 from .store import EmbeddingStore, repo_ref
 
 TABLES = ['summary_clean', 'auroc', 'auroc_by_draw', 'reference_shifts', 'reliance', 'pairwise_dominance',
-          'temporal', 'selftest', 'informativeness']
+          'temporal', 'selftest', 'informativeness', 'discordance', 'discordance_model', 'discordance_aurocs']
 STAGED = 'MMD_STAGED'          # written last by `weights stage`: the weights folder is complete
 
 
@@ -216,6 +216,91 @@ class Zoo:
         print(rep.clean[['level_id', 'readout', 'clf', 'family', 'slot', 'n', 'delta_died', 'delta_survived', 'gap']]
               .round(4).to_string(index=False))
         return rep
+
+    # ── discordance (analysis.discordance): reads the stored runs, never writes them ──
+    def discordance_data(self, model: str, modset=None, levels=None):
+        """One model's stored data for one modality set (analysis.discordance.ModelData), after checking that the
+        model was run on this manifest."""
+        from .analysis import discordance as DC
+        A, ms = self.check(model, modset)
+        man = self.manifest(ms.name)
+        store = EmbeddingStore.for_model(self.cfg.emb_dir(model), A.keymap)
+        h = store.cohort_hash(ms.name)
+        if h not in (None, man.hash):
+            raise ValueError(f'{model} was run on cohort {h}, the {ms.name} manifest is {man.hash}')
+        return DC.ModelData(model, A, ms, man, store, DC.arm_configs(man.analysis_configs(), ms.mods,
+                                                                     list(levels or man.levels)))
+
+    def _discordance_models(self, modset: str, models=None, levels=None) -> list:
+        """ModelData of every model that can run the set and has stored records (`models`: only these)."""
+        ms = self.sets[modset]
+        return [self.discordance_data(m, ms.name, levels) for m, A in self.models().items()
+                if ms.fits(A.modalities) and (not models or m in models)
+                and fsio.exists(f'{self.cfg.emb_dir(m)}/index.parquet')]
+
+    def discordance_cohort(self, modset: str, models=None, levels=None, save=True, data=None) -> Dict[str, set]:
+        """The ONE cohort every model of a modality set is analysed on: per level, the stays that have every arm,
+        draw and donor input stored for EVERY model (`models`, default: each model that can run the set and has
+        stored records; `data`: their ModelData, if already built). Saved to results/zoo/discordance_cohort_<set>."""
+        from .analysis import discordance as DC
+        data = data if data is not None else self._discordance_models(modset, models, levels)
+        cohort = DC.shared_cohort(data)
+        names = [d.name for d in data]
+        print(f'  {modset} cohort over {names}: {({lv: len(v) for lv, v in sorted(cohort.items())})} stays')
+        if save and cohort:
+            tab = pd.DataFrame([(lv, s) for lv, v in cohort.items() for s in sorted(v)], columns=['level_id', 'stay_id'])
+            tab = tab.assign(modset=modset, models='+'.join(names))
+            fsio.write_parquet(tab, f'{self.cfg.zoo_dir()}/discordance_cohort_{modset}.parquet')
+            fsio.write_csv(tab, f'{self.cfg.zoo_dir()}/discordance_cohort_{modset}.csv')
+        return cohort
+
+    def discordance(self, model: str, modset=None, levels=None, readouts=None, stays: Dict[str, set] = None,
+                    save=True, data=None):
+        """Necessity, discordance sensitivity and modality bias against a late-fusion benchmark of the model's own
+        single-modality evidence (analysis.discordance.analyse), on the stored records only (CPU). `readouts`:
+        names or keys to keep (default: all); `stays`: level -> the stays to use (discordance_cohort). Writes
+        discordance, discordance_model, discordance_aurocs and discordance_scores to the model's results folder."""
+        from .analysis import discordance as DC
+        data = data if data is not None else self.discordance_data(model, modset, levels)
+        res = DC.analyse(data, stays, readouts, self.cfg.pca_dim)
+        if save and res:
+            res.save(self.cfg.results_dir(data.name, data.modset.name))
+        return res
+
+    def discordance_table(self, models=None, modsets=None, compute=True, levels=None, readouts=None, save=True):
+        """Every model x set's discordance tables stacked (computed first when `compute`), across modality sets so
+        modalities can be compared -> results/zoo/discordance{,_model}. Within a set every model is analysed on the
+        same cohort (discordance_cohort), each model's store read once. save=False writes nothing at all (a dry
+        run: inspect the returned Result's per_mod and per_model)."""
+        from .analysis import discordance as DC
+        per_mod, per_model = [], []
+        for ms in self.sets:
+            if (modsets and ms.name not in modsets) or not fsio.exists(f'{self.cfg.cohort_dir(ms.name)}/manifest.json'):
+                continue
+            if compute:
+                data = self._discordance_models(ms.name, models, levels)
+                if not data:
+                    continue
+                print(f'══ {ms.name}: {[d.name for d in data]}')
+                cohort = self.discordance_cohort(ms.name, save=save, data=data)
+                for d in data:
+                    print(f'── {d.name} · {ms.name}')
+                    res = self.discordance(d.name, readouts=readouts, stays=cohort, save=save, data=d)
+                    per_mod.append(res.per_mod)
+                    per_model.append(res.per_model)
+                continue
+            for name, A in self.models().items():
+                out = self.cfg.results_dir(name, ms.name)
+                if ms.fits(A.modalities) and (not models or name in models) \
+                        and fsio.exists(f'{out}/discordance_model.parquet'):
+                    per_mod.append(fsio.read_parquet(f'{out}/discordance.parquet'))
+                    per_model.append(fsio.read_parquet(f'{out}/discordance_model.parquet'))
+        stack = lambda ts: pd.concat([t for t in ts if len(t)], ignore_index=True) if any(len(t) for t in ts) \
+            else pd.DataFrame()
+        tabs = DC.Result(per_mod=stack(per_mod), per_model=stack(per_model))
+        if save and tabs:
+            tabs.save(self.cfg.zoo_dir())
+        return tabs
 
     def analyse_all(self, models=None, modsets=None, **kw):
         """Analyse every (model, set) pair that fits and has stored records."""

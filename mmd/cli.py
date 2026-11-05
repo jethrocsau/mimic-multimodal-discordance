@@ -12,6 +12,7 @@ mmd/config.py); --cohort overrides the cohort version, --define adds modality se
     mmd analyse --model gemma3-4b [--modset cxr_notes]
     mmd compare-notebook --model llava-med --notebook-dir gs://<bucket>/v1/emb/llava-med/imported/swap4
     mmd zoo --modset cxr_notes [--models llava-med,gemma3-4b] [--exclude-exposed] [--split-file <csv>]
+    mmd discordance [--models gemma3-4b,llava-med] [--modsets cxr_notes,ecg_notes] [--levels L1] [--readouts answer]
     mmd collect
     mmd status --modset cxr_notes
     mmd bq link --modset cxr_notes
@@ -225,6 +226,36 @@ def zoo(modset: str = ModsetOpt, models: str = typer.Option('', help='comma list
     cols = ['model', 'mimic_exposure', 'subset', 'level_id', 'readout', 'clf', 'mod', 'auroc_only', 'info_share',
             'reliance_share', 'bias']
     print(tab[[c for c in cols if c in tab]].round(3).to_string(index=False) if len(tab) else 'no results yet')
+
+
+@app.command()
+def discordance(models: str = typer.Option('', help='comma list (default: every model with stored records)'),
+                modsets: str = typer.Option('', help='comma list (default: every set each model can run)'),
+                levels: str = typer.Option('', help='comma list of tiers (default: all)'),
+                readouts: str = typer.Option('', help="comma list of readout names or keys, 'answer' for the "
+                                                      "model's own answer (default: all)"),
+                save: bool = typer.Option(True, help='--no-save: compute and print only, write nothing'),
+                cohort: Optional[str] = CohortOpt, define: List[str] = DefineOpt):
+    """Necessity, discordance sensitivity and modality bias per model and modality against a late-fusion benchmark of
+    the model's own single-modality evidence, for its answer and every readout x classifier, on the stored records
+    (CPU) -> results/<model>/<set>/discordance* and results/zoo/discordance{,_model}."""
+    tabs = _run(_zoo(cohort, define).discordance_table, _list(models), _list(modsets), levels=_list(levels),
+                readouts=_list(readouts), save=save)
+    pm = tabs.per_model
+    if not len(pm):
+        print('no stored records')
+        return
+    cols = ['model', 'modset', 'level_id', 'readout', 'clf', 'n', 'auroc_reference', 'demographic_auroc',
+            'capture', 'benchmark_auroc_reference', 'benchmark_valid', 'total_modality_bias', 'dominant_modality',
+            'max_substitution_effect']
+    print('\nper model (one row per readout x classifier and tier):')
+    print(pm[[c for c in cols if c in pm]].round(3).to_string(index=False))
+    mod = tabs.per_mod
+    cols = ['model', 'level_id', 'readout', 'clf', 'mod', 'necessity', 'expected_necessity',
+            'discordance_sensitivity', 'expected_discordance_sensitivity', 'excess_discordance_sensitivity',
+            'substitution_effect', 'modality_bias_score', 'benchmark_valid']
+    print('\nper modality (expected_* = the late-fusion benchmark; excess = model - expected):')
+    print(mod[[c for c in cols if c in mod]].round(3).to_string(index=False))
 
 
 @app.command()

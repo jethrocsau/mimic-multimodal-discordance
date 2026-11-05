@@ -345,10 +345,23 @@ readout × classifier × tier and writes the tables and figures. Records not sto
 ### Step 4: compare
 ```bash
 uv run mmd zoo --modset cxr_notes [--models llava-med,gemma3-4b] [--split-file <mimic-cxr-2.0.0-split.csv.gz>]
+uv run mmd discordance [--models gemma3-4b,llava-med] [--levels L3] [--readouts answer]   # every set
 uv run mmd collect                       # every model × set stacked into v1/results/all/<table>
 uv run mmd bq link --modset cxr_notes    # optional: BigQuery external tables over the parquet results
 ```
 `--split-file` adds a row per model restricted to stays whose baseline film is outside the MIMIC-CXR training split.
+
+`mmd discordance` asks of each modality m: how much of the model's above-chance AUROC is lost when m is **removed**
+(necessity), and when m comes from an **opposite-outcome** donor, i.e. conflicts with the rest (discordance
+sensitivity), against a **late-fusion benchmark**: the average log-odds of calibrated single-modality probes fitted on
+the model's own "only m" inputs, put through the same perturbations. Excess discordance sensitivity (model −
+benchmark) above 0 means m misleads the model more than the model's own evidence from m justifies. It runs for the
+model's answer (`yes_log_odds`) and every hidden-state readout × classifier (logistic regression, and XGBoost where
+installed), adds a demographic baseline (age + sex), and analyses every model of a set on the same patients
+(`results/zoo/discordance_cohort_<set>`; `--models` picks which models define it). It only reads the stored runs
+(CPU) and writes to `results/<model>/<set>/discordance*` and `results/zoo/discordance*`; definitions are in
+`mmd/analysis/discordance.py`. Hidden-state readouts are slow from the bucket (minutes per readout), so
+`--readouts answer` gives the answer track alone.
 
 ### From Python (e.g. a notebook)
 ```python
@@ -404,6 +417,8 @@ The tables `analyse` writes:
 | `informativeness`, `informativeness_per_stay` | AUROC of each "only m" arm and of all modalities together |
 | `selftest` | the label-shuffle test |
 | `per_stay`, `scores` | the per-stay long tables everything else is computed from |
+| `discordance`, `discordance_model` | (`mmd discordance`) per readout × classifier and modality: necessity, discordance sensitivity, substitution effect, their `expected_*` (late-fusion benchmark) and excess values, modality bias score; per readout × classifier: capture, demographic AUROC, benchmark validity, total modality bias, dominant modality |
+| `discordance_aurocs`, `discordance_scores` | the arm AUROCs (with the per-draw range) and the per-stay scores they come from |
 
 ---
 
