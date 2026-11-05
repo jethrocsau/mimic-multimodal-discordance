@@ -7,14 +7,20 @@ This repository builds the patient cohort, collects each patient's data, and run
 systematically perturbed inputs (a modality removed, replaced by a later record, by another patient's record, or by
 a cohort average) to measure each model's reliance on each modality.
 
+Its headline analysis asks what happens when the modalities **disagree**: replace one modality with the record of a
+patient who had the opposite outcome, and measure how much of the model's discrimination is lost, against how much a
+late fusion of the model's own single-modality evidence would lose under the same conflict. A model that loses more
+than that benchmark is misled by the modality beyond what its own evidence from it justifies
+([mmd/README.md, Discordance](mmd/README.md#discordance-against-a-late-fusion-benchmark)).
+
 ## What is in the repository
 
 | folder | what it does | start here |
 |---|---|---|
 | [sql/phase0_dataform/](sql/phase0_dataform/) | BigQuery Dataform project: builds the cardiac ICU cohort from MIMIC-IV and extracts vitals, labs, ECGs, radiology notes and chest X-rays per patient, plus a download list of the image and waveform files | [its README](sql/phase0_dataform/README.md) |
 | [download/](download/) | downloads the files on that list (CXR JPGs, ECG waveforms, reports) from PhysioNet, verified against PhysioNet's checksums | header of [download_all.sh](download/download_all.sh) |
-| [mmd/](mmd/) | the experiment: defines the perturbed inputs, runs every model on them, analyses and compares the models (`mmd` command line) | [its README](mmd/README.md) |
-| [notebooks/](notebooks/) | `explore_results.ipynb`: loads the result tables `mmd` writes | |
+| [mmd/](mmd/) | the experiment: defines the perturbed inputs, runs every model on them, analyses and compares the models, and measures discordance against a late-fusion benchmark (`mmd` command line) | [its README](mmd/README.md) |
+| [notebooks/](notebooks/) | `explore_results.ipynb`: loads the result tables `mmd` writes and draws the discordance charts | |
 | [modality_eda/](modality_eda/) | exploratory notebooks per modality (CXR, ECG, EHR, vitals, coverage) | |
 
 The Dataform project also sits at the repository root on the `dataform` branch, which is the branch to link to
@@ -25,7 +31,7 @@ BigQuery Dataform.
 ```
  1. cohort (BigQuery)          2. raw files                  3. experiment (mmd)
  sql/phase0_dataform     ─►    download/download_all.sh  ─►  mmd data stage → cohort build → perturb (GPU)
- phase0.* tables               CXR / ECG files in a          → analyse → zoo
+ phase0.* tables               CXR / ECG files in a          → analyse → zoo → discordance (CPU)
                                private bucket                results in the same bucket
 ```
 
@@ -34,7 +40,9 @@ BigQuery Dataform.
 2. **Get the files.** Download the CXR images and ECG waveforms on `phase0.x_file_manifest` and place them in a
    private Cloud Storage bucket as `physionet/<project>/<version>/<relative_path>` (the paths PhysioNet uses).
 3. **Run the experiment.** Follow [mmd/README.md](mmd/README.md): install with `uv`, point `mmd.toml` at the bucket,
-   build the cohort manifest, run the models on a GPU VM, then analyse and compare on any machine.
+   build the cohort manifest, run the models on a GPU VM, then analyse and compare on any machine. The analyses
+   (`mmd analyse`, `mmd zoo`, `mmd discordance`) only read the stored model runs, so they can be changed and rerun
+   without touching the GPU step; `mmd discordance --no-save` is a dry run that writes nothing.
 
 ## Requirements
 

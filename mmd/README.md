@@ -7,6 +7,11 @@ rely on each modality (chest X-ray, ECG, radiology note, …), compared with how
 record, by another patient's record, or by a cohort average. It measures how far each perturbation moves the model's
 risk estimate, and puts every model in one comparable table.
 
+The **discordance analysis** (`mmd discordance`) asks the sharper question: when one modality *conflicts* with the
+rest (it comes from a patient with the opposite outcome), is the model misled by it more than the model's own evidence
+from that modality justifies? It compares each model with a late-fusion benchmark built from the model's own
+single-modality evidence, put through the same perturbations ([Discordance](#discordance-against-a-late-fusion-benchmark)).
+
 Contents: [1 How it fits together](#1-how-it-fits-together) · [2 Concepts](#2-concepts) ·
 [3 Setup](#3-setup) · [4 Running it](#4-running-it) · [5 Where everything goes](#5-where-everything-goes) ·
 [6 Models](#6-models) · [7 Known gaps](#7-known-gaps)
@@ -23,8 +28,9 @@ Contents: [1 How it fits together](#1-how-it-fits-together) · [2 Concepts](#2-c
  modsets.py  modality set     runner.py                    analysis/probe.py            zoo.py
  data.py     slot tables  ─►  models/  (adapters)      ─►  analysis/effects.py      ─►  information vs
  cohort.py   recipients,      store.py (embeddings)        analysis/charts.py           reliance, per
-             folds, donors                                 analysis/report.py           modality
- perturb.py  strategies ──► frozen manifest
+             folds, donors                                 analysis/report.py           modality;
+ perturb.py  strategies ──► frozen manifest                analysis/discordance.py      discordance vs a
+                                                                                        late-fusion benchmark
 
  zoo.Zoo runs every step for every model ·  cli.py exposes each step as an `mmd` command
  shared: config.py (settings, paths) · fsio.py (local / gs:// IO) · records.py (record ids) · prompts.py
@@ -47,6 +53,7 @@ Contents: [1 How it fits together](#1-how-it-fits-together) · [2 Concepts](#2-c
 | analyse | `analysis/probe.py` | `Embeddings` and `Probe`: fit on the reference embeddings per fold, score every perturbation |
 | analyse | `analysis/effects.py` | every effect table: Δ risk, AUROC, within-patient effects, reliance and information shares |
 | analyse | `analysis/charts.py`, `report.py` | the figures; `analyse_model` runs probe → effects → charts and writes the tables |
+| analyse | `analysis/discordance.py` | the discordance analysis: `ModelData` (one model's stored data, read only), the model and late-fusion benchmark tracks, the metrics, `Result` |
 | compare | `zoo.py` | `Zoo`: the orchestration layer every model plugs into, and the cross-model table |
 | — | `cli.py` | the `mmd` commands, each a thin call into `Zoo` |
 | — | `config.py`, `fsio.py`, `prompts.py` | settings and paths, local / `gs://` file access, the shared question wording |
@@ -158,6 +165,45 @@ Each vector readout is reduced with PCA (fitted on the training folds) before th
 read raw, with no probe, as the model's own risk score. For every pair of modalities a, b,
 `pairwise_dominance` reports (b − a) / (|a| + |b|) per measure, in [−1, 1]: +1 only b matters, −1 only a.
 
+### Discordance against a late-fusion benchmark
+`mmd discordance` (`analysis/discordance.py`) scores four inputs per modality m, all on the same stays:
+
+| arm | the input |
+|---|---|
+| reference | every modality the stay's own |
+| without m | m removed |
+| matched m | m from a same-outcome donor (5 draws) |
+| counterfactual m | m from an opposite-outcome donor (5 draws): m now **conflicts** with the rest |
+
+A donor arm's AUROC is the mean over the draws of one AUROC per draw (averaging scores over donors first would inflate
+the matched AUROC and deflate the counterfactual one). With capture = AUROC(reference) − 0.5, what the model knows
+above chance:
+
+| measure | formula | reads as |
+|---|---|---|
+| necessity | (AUROC(reference) − AUROC(without m)) / capture | share of what the model knows lost when m is absent |
+| discordance sensitivity | (AUROC(reference) − AUROC(counterfactual m)) / capture | share lost when m conflicts (above 1: below chance) |
+| substitution effect | AUROC(reference) − AUROC(matched m) | negative control: another patient's record with the same outcome; ≈ 0 |
+| expected … | the same, on the **late-fusion benchmark** | what the loss would be if the model just added up its own single-modality evidence |
+| **excess discordance sensitivity** | discordance sensitivity − expected discordance sensitivity | **> 0: m misleads the model more than its own evidence from m justifies; < 0: the model discounts m** |
+| modality bias score, total modality bias | conflict share − expected conflict share; ½ Σ \|score\| | where across modalities the excess sits; one number per model |
+
+**The late-fusion benchmark.** Even an unbiased model loses more when a modality conflicts than when it is absent,
+so discordance sensitivity alone has no natural zero. For each modality, a Platt-calibrated probe fitted on the
+model's own "only m" inputs gives log-odds; the benchmark's score is their average. The same arms go through it (in a
+donor arm the donor's single-modality log-odds replace the stay's), and the excess is the model's value minus the
+benchmark's.
+
+**Readouts.** Every metric is computed for the model's own answer (`yes_log_odds`, else the logit of P(Yes)) and for
+every hidden-state readout × classifier (logistic regression; XGBoost where installed). Probes are cross-fitted on
+the manifest folds, and donors come from the recipient's own fold, so no probe scores a stay it was trained on.
+
+**Alongside, per model and tier:** a demographic baseline (age + sex alone, same stays: what any model should beat);
+`low_capture` (capture < 0.05, where every ratio is noise); `benchmark_valid` (the benchmark reaches the best single
+modality's AUROC; read expected and excess values only where it does); `max_substitution_effect` (the negative
+control). Every model of a modality set is analysed on the **same stays**: those with every arm, draw and donor input
+stored for every model chosen (`results/zoo/discordance_cohort_<set>`).
+
 ---
 
 ## 3. Setup
@@ -253,6 +299,15 @@ uv run mmd setup check                   # settings; bucket and BigQuery reachab
 uv run mmd modsets                       # sets, which models can run each, inputs per recipient
 ```
 
+**macOS: `ModuleNotFoundError: No module named 'mmd'`.** macOS can flag files inside `.venv` as hidden, and Python
+3.12 skips a hidden `.pth` file, so the editable install of `mmd` is not found (`uv run` re-applies the flag). Activate
+the environment and point Python at the repository instead, once per terminal:
+```bash
+source .venv/bin/activate && export PYTHONPATH="$PWD"
+mmd setup check                          # then run mmd directly, without `uv run`
+```
+XGBoost on macOS also needs `brew install libomp`; without it the analyses use logistic regression only.
+
 ---
 
 ## 4. Running it
@@ -345,23 +400,23 @@ readout × classifier × tier and writes the tables and figures. Records not sto
 ### Step 4: compare
 ```bash
 uv run mmd zoo --modset cxr_notes [--models llava-med,gemma3-4b] [--split-file <mimic-cxr-2.0.0-split.csv.gz>]
-uv run mmd discordance [--models gemma3-4b,llava-med] [--levels L3] [--readouts answer]   # every set
+uv run mmd discordance [--models llava-med,gemma3-4b,opentslm-sp] [--modsets ...] [--levels L3] \
+                       [--readouts answer,answer_mean_state] [--no-save]
 uv run mmd collect                       # every model × set stacked into v1/results/all/<table>
 uv run mmd bq link --modset cxr_notes    # optional: BigQuery external tables over the parquet results
 ```
 `--split-file` adds a row per model restricted to stays whose baseline film is outside the MIMIC-CXR training split.
 
-`mmd discordance` asks of each modality m: how much of the model's above-chance AUROC is lost when m is **removed**
-(necessity), and when m comes from an **opposite-outcome** donor, i.e. conflicts with the rest (discordance
-sensitivity), against a **late-fusion benchmark**: the average log-odds of calibrated single-modality probes fitted on
-the model's own "only m" inputs, put through the same perturbations. Excess discordance sensitivity (model −
-benchmark) above 0 means m misleads the model more than the model's own evidence from m justifies. It runs for the
-model's answer (`yes_log_odds`) and every hidden-state readout × classifier (logistic regression, and XGBoost where
-installed), adds a demographic baseline (age + sex), and analyses every model of a set on the same patients
-(`results/zoo/discordance_cohort_<set>`; `--models` picks which models define it). It only reads the stored runs
-(CPU) and writes to `results/<model>/<set>/discordance*` and `results/zoo/discordance*`; definitions are in
-`mmd/analysis/discordance.py`. Hidden-state readouts are slow from the bucket (minutes per readout), so
-`--readouts answer` gives the answer track alone.
+`mmd discordance` ([Discordance](#discordance-against-a-late-fusion-benchmark)) runs every modality set the chosen
+models take and prints a per-model and a per-modality table.
+- **`--no-save`** computes and prints only: nothing is written. Start with it.
+- **`--models`** also decides the shared cohort: a model whose run is incomplete shrinks it for every model of its
+  set, so leave such a model out until its `perturb` run is done.
+- **`--readouts answer`** gives the model's own answer alone (minutes). Each hidden-state readout is read from the
+  bucket (minutes per readout and model from a laptop, much faster on a VM in the bucket's region); readouts with no
+  value once the signal is removed (`signal mean state`, the projector output) are skipped.
+- It only **reads** the stored runs (`emb/`, `cohort/`, `data/`); records it does not need (other strategies, prompt
+  variants) are ignored, and no model needs rerunning when the analysis changes.
 
 ### From Python (e.g. a notebook)
 ```python
@@ -371,8 +426,15 @@ zoo = Zoo(config.load(), specs=['cxr_ecg_notes=e,x,n'])
 zoo.compatibility()                               # model × set
 zoo.analyse('gemma3-4b', 'cxr_notes')
 zoo.table(modset='cxr_notes')                     # info_share, reliance_share, bias per model and modality
+
+res = zoo.discordance_table(models=['llava-med', 'gemma3-4b'], readouts=['answer'], save=False)   # a dry run
+res.per_mod                                       # per modality: necessity, discordance sensitivity, expected, excess
+res.per_model                                     # per model x tier x readout: capture, demographic AUROC, validity
+zoo.discordance_table(compute=False, save=False)  # the saved tables, nothing computed
 ```
-[notebooks/explore_results.ipynb](../notebooks/explore_results.ipynb) loads the result tables.
+[notebooks/explore_results.ipynb](../notebooks/explore_results.ipynb) loads the result tables; its last cells draw
+the discordance charts (necessity vs discordance sensitivity with the expected value, and the excess matrix) for a
+chosen tier, readout and classifier.
 
 ---
 
@@ -394,7 +456,10 @@ v1/
   emb/<model>/lookups/<name>/            single-signal runs read for pre-fusion vectors   ← index import --lookup
   emb/encoders/<encoder>/                single-modality encoder embeddings (not read by mmd yet)
   results/<model>/<set>/                 model.json + tables (.csv and .parquet)          ← analyse
+                                         discordance{,_model,_aurocs,_scores}             ← discordance
   results/zoo/<set>.csv|parquet          the cross-model table                            ← zoo
+  results/zoo/discordance{,_model}       every model x set's discordance tables           ← discordance
+  results/zoo/discordance_cohort_<set>   the stays every model of the set is analysed on  ← discordance
   results/all/<table>.csv|parquet        every model × set stacked                        ← collect
   figures/<model>/<set>/*.png            reference_shifts_*, auroc_*, temporal_*, reliance_*
 ```
@@ -405,7 +470,7 @@ paths) before analysing.
 The store holds derived data only (embeddings, scores, record ids, results). Note text, images and signals are read
 at run time and never written there, as the MIMIC data use agreement requires.
 
-The tables `analyse` writes:
+The tables `analyse` (and, last three rows, `discordance`) writes:
 
 | table | what it holds |
 |---|---|
@@ -419,6 +484,7 @@ The tables `analyse` writes:
 | `per_stay`, `scores` | the per-stay long tables everything else is computed from |
 | `discordance`, `discordance_model` | (`mmd discordance`) per readout × classifier and modality: necessity, discordance sensitivity, substitution effect, their `expected_*` (late-fusion benchmark) and excess values, modality bias score; per readout × classifier: capture, demographic AUROC, benchmark validity, total modality bias, dominant modality |
 | `discordance_aurocs`, `discordance_scores` | the arm AUROCs (with the per-draw range) and the per-stay scores they come from |
+| `discordance_cohort_<set>` (zoo) | the stays every model of the set is analysed on, and which models defined them |
 
 ---
 
@@ -462,3 +528,11 @@ every model on stays whose baseline film is outside the MIMIC-CXR training split
 - **OpenTSLM-Gemma:** check in `--smoke` that `load_pretrained` loads the Gemma checkpoint, and check its Yes / No ids.
 - **OpenTSLM batch size:** records run one at a time. Embeddings imported from a batched run can differ from these in
   the last digits of P(Yes).
+- **Donor AUROCs in `analyse`:** the `auroc` table scores donor arms on predictions averaged over the donor draws,
+  which inflates the matched AUROC and deflates the counterfactual one (by about 0.1 for the note). `auroc_by_draw`
+  (raw answer) and `mmd discordance` (every readout) score one AUROC per draw.
+- **Gemma 3's answer is coarse:** its logits come out in bfloat16 and its log-odds sit near +17, so stored log-odds
+  take few distinct values (162 across 2,438 L3 stays) and P(Yes) is 1.0 for most stays. Probes on its hidden states
+  are unaffected.
+- **Discordance needs a model's donors' single-modality inputs too:** an incomplete `perturb` run leaves few stays
+  with every input, which shrinks the shared cohort of its whole modality set.
