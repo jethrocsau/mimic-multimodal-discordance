@@ -147,6 +147,7 @@ class Adapter:
     note_blind = ('signal mean state',)   # readouts that cannot see the note (causal attention, signal first)
     supports_mean = False
     default_order = 'signal first'    # slot order of the unflipped prompt (`~order=flip` is the other one)
+    series_spec: Dict[str, dict] = {}  # time-series modality -> data.prepare() arguments (rate, length, fill, znorm)
 
     def __init__(self, cfg=None):
         self.cfg = cfg
@@ -172,6 +173,15 @@ class Adapter:
     def describe(self) -> dict:
         """Printed by the smoke test: token ids, template, module names... anything worth checking."""
         return {}
+
+    def series(self, bundle, mod):
+        """A stored time series (data.Bundle) as this model takes it: data.prepare(bundle, **series_spec[mod]).
+        The raw bundle when the adapter sets no spec for `mod`; None stays None (signal removed)."""
+        spec = self.series_spec.get(mod)
+        if bundle is None or spec is None:
+            return bundle
+        from ..data import prepare
+        return prepare(bundle, **spec)
 
     # ── optional: mean swap ──────────────────────────────────────────────────
     def signal_mean(self, signals, mod=None):
