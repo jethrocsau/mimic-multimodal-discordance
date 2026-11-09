@@ -34,7 +34,8 @@ COMMON = ('yes_probability', 'prompt_last_state', 'prompt_mean_state', 'signal_m
           'answer_text')
 REGISTRY: Dict[str, type] = {}
 MODULES = {'llava-med': 'llava_med', 'gemma3-4b': 'gemma', 'qwen2.5-vl-7b': 'qwen_vl',
-           'opentslm-sp': 'opentslm', 'opentslm-sp-gemma': 'opentslm'}   # model name -> module under mmd.models
+           'opentslm-sp': 'opentslm', 'opentslm-sp-gemma': 'opentslm',
+           'llama3.2-vision-11b': 'llama_vision'}   # model name -> module under mmd.models
 
 
 class ReadoutSpec(NamedTuple):

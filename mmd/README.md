@@ -213,7 +213,8 @@ stored for every model chosen (`results/zoo/discordance_cohort_<set>`).
 - The CXR JPGs and ECG files in the bucket (see [Raw files](#raw-files)).
 - Credentialed PhysioNet access to MIMIC-IV, MIMIC-CXR(-JPG) and MIMIC-IV-ECG.
 - A Hugging Face token whose account has accepted the terms of every gated model you run (`google/gemma-3-4b-it`,
-  and `google/gemma-3-1b-pt` for `opentslm-sp-gemma`).
+  `google/gemma-3-1b-pt` for `opentslm-sp-gemma`, and `meta-llama/Llama-3.2-11B-Vision-Instruct` for
+  `llama3.2-vision-11b`).
 
 ### Google Cloud: project, bucket, machines
 ```bash
@@ -332,7 +333,7 @@ Each model family has its own environment, because their library versions confli
 `uv run --no-sync`** on the GPU VM: a plain `uv run` re-syncs to the core install and removes the model packages.
 ```bash
 # once per model family
-export UV_PROJECT_ENVIRONMENT=.venv-hf-modern HF_TOKEN=hf_...     # gemma3-4b, qwen2.5-vl-7b
+export UV_PROJECT_ENVIRONMENT=.venv-hf-modern HF_TOKEN=hf_...     # gemma3-4b, qwen2.5-vl-7b, llama3.2-vision-11b
 uv sync --frozen --group hf-modern
 #   llava-med:            .venv-llava-med  --group llava-med, then: uv run --no-sync mmd setup llava-med
 #   opentslm-sp / -gemma: .venv-opentslm   --group opentslm
@@ -494,6 +495,7 @@ The tables `analyse` (and, last three rows, `discordance`) writes:
 | `llava-med` | x + n | llava-med | projector output | none (PubMed Central figures) |
 | `gemma3-4b` | x + n | hf-modern | projector output | none (general web data) |
 | `qwen2.5-vl-7b` | x + n | hf-modern | not offered | none (general web data) |
+| `llama3.2-vision-11b` | x + n | hf-modern | not offered | none (general web data) |
 | `opentslm-sp` (Llama-3.2-1B) | e + n | opentslm | projector output + label statistics | none |
 | `opentslm-sp-gemma` (Gemma-3-1B) | e + n | opentslm | projector output + label statistics | none |
 
