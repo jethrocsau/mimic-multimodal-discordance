@@ -213,8 +213,9 @@ stored for every model chosen (`results/zoo/discordance_cohort_<set>`).
 - The CXR JPGs and ECG files in the bucket (see [Raw files](#raw-files)).
 - Credentialed PhysioNet access to MIMIC-IV, MIMIC-CXR(-JPG) and MIMIC-IV-ECG.
 - A Hugging Face token whose account has accepted the terms of every gated model you run (`google/gemma-3-4b-it`,
-  `google/gemma-3-1b-pt` for `opentslm-sp-gemma`, and `meta-llama/Llama-3.2-11B-Vision-Instruct` for
-  `llama3.2-vision-11b`).
+  `google/gemma-3-1b-pt` for `opentslm-sp-gemma`, `meta-llama/Llama-3.2-11B-Vision-Instruct` for
+  `llama3.2-vision-11b`, `meta-llama/Llama-3.1-8B-Instruct` for `llama3.1-8b`, `google/medgemma-1.5-4b-it` for
+  `medgemma1.5-4b`). Qwen3-VL and InternVL3 are not gated.
 
 ### Google Cloud: project, bucket, machines
 ```bash
@@ -333,7 +334,7 @@ Each model family has its own environment, because their library versions confli
 `uv run --no-sync`** on the GPU VM: a plain `uv run` re-syncs to the core install and removes the model packages.
 ```bash
 # once per model family
-export UV_PROJECT_ENVIRONMENT=.venv-hf-modern HF_TOKEN=hf_...     # gemma3-4b, qwen2.5-vl-7b, llama3.2-vision-11b
+export UV_PROJECT_ENVIRONMENT=.venv-hf-modern HF_TOKEN=hf_...     # every model of the hf-modern group (gemma3-4b, qwen*, llama*, internvl3-8b, medgemma1.5-4b)
 uv sync --frozen --group hf-modern
 #   llava-med:            .venv-llava-med  --group llava-med, then: uv run --no-sync mmd setup llava-med
 #   opentslm-sp / -gemma: .venv-opentslm   --group opentslm
@@ -496,6 +497,10 @@ The tables `analyse` (and, last three rows, `discordance`) writes:
 | `gemma3-4b` | x + n | hf-modern | projector output | none (general web data) |
 | `qwen2.5-vl-7b` | x + n | hf-modern | not offered | none (general web data) |
 | `llama3.2-vision-11b` | x + v + l + n (vitals / labs as text) | hf-modern | not offered | none (general web data) |
+| `qwen3-vl-8b` | x + v + l + n | hf-modern | not offered | none (general web data) |
+| `internvl3-8b` | x + v + l + n | hf-modern | not offered | none (general web data) |
+| `llama3.1-8b` (text only) | v + l + n | hf-modern | none (no signal) | none (general web data) |
+| `medgemma1.5-4b` | x + v + l + n | hf-modern | not offered | **MIMIC-CXR (training)**: sensitivity analyses only (`--exclude-exposed`) |
 | `opentslm-sp` (Llama-3.2-1B) | e + n | opentslm | projector output + label statistics | none |
 | `opentslm-sp-gemma` (Gemma-3-1B) | e + n | opentslm | projector output + label statistics | none |
 
@@ -526,6 +531,9 @@ every model on stays whose baseline film is outside the MIMIC-CXR training split
   the value, flagged low / high against its reference range. `VITALS` has no respiratory rate or SpO2 yet. A set with
   v / l has more configurations per recipient: start with `--levels L1 --max-order 1`.
 - **First run of every model:** read the `--smoke` output (Yes / No token ids, the signal span, module names).
+- **New models, not yet run on a GPU:** `qwen3-vl-8b` (check ~256 merged tokens per film), `internvl3-8b` (check a
+  signal span of 256, one tile), `llama3.1-8b` (check the prompt start: the Llama 3.1 template adds a system header),
+  `medgemma1.5-4b` (MIMIC-exposed: keep it out of the main table).
 - **Qwen2.5-VL:** films are resized to about 448×448 pixels (aspect ratio kept), so each gives ~256 image tokens; no mean
   swap yet.
 - **Pinning:** pin `revision` for each model, and `LLAVA_MED_COMMIT`, once its smoke test passes.
