@@ -23,13 +23,14 @@ class Qwen25VL7B(HFImageTextAdapter):
     signal, modalities, default_modset = 'cxr', ('x', 'n'), 'cxr_notes'
     meta = dict(fusion='prefix (patch merger)', domain='general', params='7B', mimic_exposure='none')
     supports_mean = False
+    fixed_pixels = FIXED_PIXELS
 
     def load(self, device='cuda'):
         super().load(device)
         ip = self.proc.image_processor
-        ip.min_pixels = ip.max_pixels = FIXED_PIXELS
+        ip.min_pixels = ip.max_pixels = self.fixed_pixels
         if hasattr(ip, 'size') and isinstance(ip.size, dict):
-            ip.size = dict(ip.size, shortest_edge=FIXED_PIXELS, longest_edge=FIXED_PIXELS)
+            ip.size = dict(ip.size, shortest_edge=self.fixed_pixels, longest_edge=self.fixed_pixels)
         self.vt_name, self.vt = None, None
         self.pj_name, self.pj = find_module(self.model, 'visual.merger')
         return self
@@ -45,6 +46,7 @@ class Qwen25VL7B(HFImageTextAdapter):
         kw = dict(text=[self.prompt(sample)], return_tensors='pt', add_special_tokens=False)
         if self.image(sample) is not None:
             kw['images'] = [self.image(sample)]
+            kw.update(self.proc_kwargs)
         x = self.proc(**kw).to(self.dev)
         if 'pixel_values' in x:
             x['pixel_values'] = x['pixel_values'].to(self.model.dtype)

@@ -112,6 +112,7 @@ class HFImageTextAdapter(Adapter):
                     dtype=self.torch_dtype)
 
     image_mod = 'x'                     # the modality key of the image; vitals / labs (if taken) become text blocks
+    proc_kwargs: dict = {}              # extra processor arguments for every call (e.g. InternVL: one tile per film)
 
     def image(self, sample: Sample):
         """The sample's image, or None (also for samples that carry vitals / labs besides it)."""
@@ -139,6 +140,7 @@ class HFImageTextAdapter(Adapter):
         kw = dict(text=[self.prompt(sample)], return_tensors='pt', add_special_tokens=False)
         if self.image(sample) is not None:
             kw['images'] = [[self.image(sample)]]
+            kw.update(self.proc_kwargs)
         x = self.proc(**kw).to(self.dev)
         if 'pixel_values' in x:
             x['pixel_values'] = x['pixel_values'].to(self.model.dtype)
@@ -153,6 +155,7 @@ class HFImageTextAdapter(Adapter):
         kw = dict(text=[self.prompt(s) for s in samples], return_tensors='pt', add_special_tokens=False, padding=True)
         if self.image(samples[0]) is not None:
             kw['images'] = self.batch_images([self.image(s) for s in samples])
+            kw.update(self.proc_kwargs)
         x = self.proc(**kw).to(self.dev)
         if 'pixel_values' in x:
             x['pixel_values'] = x['pixel_values'].to(self.model.dtype)
