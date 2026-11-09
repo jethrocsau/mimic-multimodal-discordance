@@ -495,7 +495,7 @@ The tables `analyse` (and, last three rows, `discordance`) writes:
 | `llava-med` | x + n | llava-med | projector output | none (PubMed Central figures) |
 | `gemma3-4b` | x + n | hf-modern | projector output | none (general web data) |
 | `qwen2.5-vl-7b` | x + n | hf-modern | not offered | none (general web data) |
-| `llama3.2-vision-11b` | x + n | hf-modern | not offered | none (general web data) |
+| `llama3.2-vision-11b` | x + v + l + n (vitals / labs as text) | hf-modern | not offered | none (general web data) |
 | `opentslm-sp` (Llama-3.2-1B) | e + n | opentslm | projector output + label statistics | none |
 | `opentslm-sp-gemma` (Gemma-3-1B) | e + n | opentslm | projector output + label statistics | none |
 
@@ -521,8 +521,10 @@ every model on stays whose baseline film is outside the MIMIC-CXR training split
 
 ## 7. Known gaps
 - **No adapter takes two signals yet**, so sets such as `cxr_ecg_notes` build and count but cannot run.
-- **Vitals and labs** have modality keys but no slot table or loader. Add a builder to `data.SLOT_BUILDERS` and a
-  loader to `data.signal_loader`.
+- **Vitals and labs** load raw (`data.VitalsLoader`, `data.LabsLoader`). `llama3.2-vision-11b` reads them as text
+  blocks in the prompt (`models/clinical_text.py`): per vital the last charted hour, range and hours charted; per lab
+  the value, flagged low / high against its reference range. `VITALS` has no respiratory rate or SpO2 yet. A set with
+  v / l has more configurations per recipient: start with `--levels L1 --max-order 1`.
 - **First run of every model:** read the `--smoke` output (Yes / No token ids, the signal span, module names).
 - **Qwen2.5-VL:** films are resized to about 448×448 pixels (aspect ratio kept), so each gives ~256 image tokens; no mean
   swap yet.

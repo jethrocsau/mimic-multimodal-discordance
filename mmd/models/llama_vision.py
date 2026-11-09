@@ -7,6 +7,9 @@ text starts to attend to the image.
 This is the zoo's only cross-attention model (the others are prefix fusion), so it tests whether reliance depends on
 the fusion design rather than on the modality.
 
+It is also the zoo's model for vitals and labs: it takes x + v + l + n, with vitals and labs as text blocks in the
+prompt (models/clinical_text.py), so it runs `cxr_notes`, `cxr_vitals_labs_notes`, `vitals_notes`, `labs_notes`.
+
 Differences from the Gemma-style models in hf_vlm:
 - `signal_mean_state` is the final-layer state at the single <|image|> token, not a mean over image tokens: there
   are no image tokens in the sequence. It is kept so the readout set matches the other models;
@@ -33,7 +36,7 @@ class Llama32Vision11B(HFImageTextAdapter):
     name = 'llama3.2-vision-11b'
     hf_id = 'meta-llama/Llama-3.2-11B-Vision-Instruct'
     revision = 'main'                 # pin a commit once the smoke test passes
-    signal, modalities, default_modset = 'cxr', ('x', 'n'), 'cxr_notes'
+    signal, modalities, default_modset = 'cxr', ('x', 'v', 'l', 'n'), 'cxr_notes'
     meta = dict(fusion='cross-attention', domain='general', params='11B', mimic_exposure='none')
     torch_dtype = 'bfloat16'
     supports_mean = False
