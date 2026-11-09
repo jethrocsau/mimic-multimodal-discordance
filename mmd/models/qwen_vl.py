@@ -43,8 +43,8 @@ class Qwen25VL7B(HFImageTextAdapter):
 
     def inputs(self, sample):
         kw = dict(text=[self.prompt(sample)], return_tensors='pt', add_special_tokens=False)
-        if sample.signal is not None:
-            kw['images'] = [sample.signal]
+        if self.image(sample) is not None:
+            kw['images'] = [self.image(sample)]
         x = self.proc(**kw).to(self.dev)
         if 'pixel_values' in x:
             x['pixel_values'] = x['pixel_values'].to(self.model.dtype)

@@ -17,6 +17,7 @@ import numpy as np
 
 from .. import prompts
 from .base import Adapter, ReadoutSpec, Sample, to_np
+from .clinical_text import labs_text, vitals_text
 
 
 def find_module(model, *suffixes):
@@ -110,8 +111,15 @@ class HFImageTextAdapter(Adapter):
                     image_token_id=self.image_token_id, vision_tower=self.vt_name, projector=self.pj_name,
                     dtype=self.torch_dtype)
 
+    image_mod = 'x'                     # the modality key of the image; vitals / labs (if taken) become text blocks
+
+    def image(self, sample: Sample):
+        """The sample's image, or None (also for samples that carry vitals / labs besides it)."""
+        return sample.signals.get(self.image_mod)
+
     def messages(self, sample: Sample):
-        body = prompts.text(sample.signal is not None, sample.report, self.signal, sample.order, sample.para)
+        body = prompts.text(self.image(sample) is not None, sample.report, self.signal, sample.order, sample.para,
+                            vitals=vitals_text(sample.signals.get('v')), labs=labs_text(sample.signals.get('l')))
         content = []
         for i, part in enumerate(body.split(prompts.SIGNAL_MARK)):
             if i:
@@ -129,8 +137,8 @@ class HFImageTextAdapter(Adapter):
 
     def inputs(self, sample: Sample):
         kw = dict(text=[self.prompt(sample)], return_tensors='pt', add_special_tokens=False)
-        if sample.signal is not None:
-            kw['images'] = [[sample.signal]]
+        if self.image(sample) is not None:
+            kw['images'] = [[self.image(sample)]]
         x = self.proc(**kw).to(self.dev)
         if 'pixel_values' in x:
             x['pixel_values'] = x['pixel_values'].to(self.model.dtype)
@@ -143,8 +151,8 @@ class HFImageTextAdapter(Adapter):
     def inputs_batch(self, samples):
         """Left-padded inputs for several samples that all have, or all lack, the signal."""
         kw = dict(text=[self.prompt(s) for s in samples], return_tensors='pt', add_special_tokens=False, padding=True)
-        if samples[0].signal is not None:
-            kw['images'] = self.batch_images([s.signal for s in samples])
+        if self.image(samples[0]) is not None:
+            kw['images'] = self.batch_images([self.image(s) for s in samples])
         x = self.proc(**kw).to(self.dev)
         if 'pixel_values' in x:
             x['pixel_values'] = x['pixel_values'].to(self.model.dtype)
@@ -190,7 +198,7 @@ class HFImageTextAdapter(Adapter):
         gen, cap = self._generate(x)
         r = readouts_from_generate(self.torch, gen, x['input_ids'].shape[1], self._span(x['input_ids']),
                                    self.yes_ids, self.no_ids, self.tok)
-        return self._prefusion(r, cap, sample.signal is not None)
+        return self._prefusion(r, cap, self.image(sample) is not None)
 
     def forward_batch(self, samples) -> list:
         """forward() for several samples in one generate() call. The samples must all have, or all lack, the signal
@@ -200,7 +208,7 @@ class HFImageTextAdapter(Adapter):
         x = self.inputs_batch(samples)
         gen, cap = self._generate(x)
         L, ids, att = x['input_ids'].shape[1], x['input_ids'], x['attention_mask'].bool()
-        has = samples[0].signal is not None
+        has = self.image(samples[0]) is not None
         sizes = self.image_token_counts(x) if has else None
         out = []
         for i in range(len(samples)):
