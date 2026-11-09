@@ -36,7 +36,7 @@ REGISTRY: Dict[str, type] = {}
 MODULES = {'llava-med': 'llava_med', 'gemma3-4b': 'gemma', 'qwen2.5-vl-7b': 'qwen_vl', 'qwen3-vl-8b': 'qwen_vl',
            'opentslm-sp': 'opentslm', 'opentslm-sp-gemma': 'opentslm',
            'llama3.2-vision-11b': 'llama_vision',
-           'medgemma1.5-4b': 'medgemma', 'internvl3-8b': 'internvl',
+           'internvl3-8b': 'internvl',
            'llama3.1-8b': 'text_llm'}   # model name -> module under mmd.models
 
 
