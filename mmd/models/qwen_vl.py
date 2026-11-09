@@ -51,3 +51,18 @@ class Qwen25VL7B(HFImageTextAdapter):
         if 'pixel_values' in x:
             x['pixel_values'] = x['pixel_values'].to(self.model.dtype)
         return x
+
+
+@register
+class Qwen3VL8B(Qwen25VL7B):
+    """Qwen3-VL-8B-Instruct: the next Qwen generation, no MIMIC-CXR training. Fusion: the merged patches enter at
+    the image pad tokens as in Qwen2.5-VL, and DeepStack also adds features from three ViT layers to the first LLM
+    layers. The projector readout is the main merger (`visual.merger`), not the DeepStack mergers.
+    The ViT patch is 16 px (14 in Qwen2.5-VL), so films are resized to ~512x512 for the same ~256 merged tokens.
+    Also takes vitals and labs (text blocks)."""
+    name = 'qwen3-vl-8b'
+    hf_id = 'Qwen/Qwen3-VL-8B-Instruct'
+    revision = 'main'                 # pin a commit once the smoke test passes
+    signal, modalities, default_modset = 'cxr', ('x', 'v', 'l', 'n'), 'cxr_notes'
+    meta = dict(fusion='prefix (patch merger) + DeepStack', domain='general', params='8B', mimic_exposure='none')
+    fixed_pixels = 512 * 512          # 16 px patches, 2x2 merge: ~16x16 merged tokens per film
