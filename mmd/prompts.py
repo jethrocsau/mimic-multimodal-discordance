@@ -2,6 +2,8 @@
 
 Para 0 is exactly the LLaVA-Med notebook's LlavaPromptBuilder text (so new LLaVA-Med records match the stored
 ones). The three arms differ by one block: image (signal + question), notes (report + question), fused (both).
+Vitals and labs (text blocks from models/clinical_text.py) go between the expert line and the report; when either is present the
+expert line names every input the prompt holds. Without them the text is unchanged, byte for byte.
 Each adapter wraps `text()` in its own chat template and puts its own signal token where `compose()` says.
 
 Factors (in the record id as ~order / ~para):
@@ -38,12 +40,33 @@ def arm(has_signal: bool, report: Optional[str]) -> str:
     return 'fused' if (has_signal and report) else ('signal' if has_signal else 'notes')
 
 
-def text(has_signal: bool, report: Optional[str], signal: str = 'cxr', order: str = 'default', para: int = 0) -> str:
-    """The user turn, with SIGNAL_MARK where the signal goes (absent when there is no signal)."""
-    a = arm(has_signal, report)
-    expert = {'fused': SIGNALS[signal]['expert_fused'], 'signal': SIGNALS[signal]['expert_signal'],
-              'notes': EXPERT_NOTES}[a]
-    body = expert
+SIGNAL_NOUN = {'cxr': 'a chest radiograph', 'ecg': 'a 12-lead ECG'}
+
+
+def _join(parts):
+    return parts[0] if len(parts) == 1 else ', '.join(parts[:-1]) + ' and ' + parts[-1]
+
+
+def expert_line(has_signal: bool, report: Optional[str], signal: str, vitals: Optional[str],
+                labs: Optional[str]) -> str:
+    """The expert sentence. Without vitals / labs: the original three sentences."""
+    if not (vitals or labs):
+        return {'fused': SIGNALS[signal]['expert_fused'], 'signal': SIGNALS[signal]['expert_signal'],
+                'notes': EXPERT_NOTES}[arm(has_signal, report)]
+    parts = ([SIGNAL_NOUN[signal]] if has_signal else []) + (['vital signs'] if vitals else []) \
+        + (['laboratory results'] if labs else []) + (['a radiology report'] if report else [])
+    where = 'from the same ICU stay' if len(parts) > 1 else 'from an ICU stay'
+    return f'You are an expert clinician reviewing {_join(parts)} {where}.'
+
+
+def text(has_signal: bool, report: Optional[str], signal: str = 'cxr', order: str = 'default', para: int = 0,
+         vitals: Optional[str] = None, labs: Optional[str] = None) -> str:
+    """The user turn, with SIGNAL_MARK where the signal goes (absent when there is no signal). `vitals` / `labs`:
+    the text blocks of models.clinical_text, or None."""
+    body = expert_line(has_signal, report, signal, vitals, labs)
+    for block in (vitals, labs):
+        if block:
+            body += f'\n\n{block}'
     if report:
         body += f'\n\nRadiology report:\n{report}'
     body += f'\n\nQuestion: {QUESTIONS[int(para)]}\n\n{DIRECT}'
