@@ -21,7 +21,8 @@ MOD_BIT = {'v': 1, 'l': 2, 'e': 4, 'n': 8, 'x': 16}  # analysis_dataset bitmask 
 NOTE = 'n'
 MAX_MODS = len(MOD_ORDER)
 
-BUILTIN = {'cxr_notes': ('x', 'n'), 'ecg_notes': ('e', 'n')}
+BUILTIN = {'cxr_notes': ('x', 'n'), 'ecg_notes': ('e', 'n'), 'vitals_notes': ('v', 'n'), 'labs_notes': ('l', 'n'),
+           'all5': ('e', 'x', 'v', 'l', 'n')}
 
 
 def canonical(mods: Iterable[str]) -> Tuple[str, ...]:

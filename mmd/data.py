@@ -10,15 +10,23 @@ Slot rules per modality (the notebooks' rules, so existing runs keep their recor
     x  CXR image   latest frontal baseline film (lateral only when no frontal one); optional pins
     e  ECG         earliest baseline record
     n  note        earliest baseline radiology report (optionally chest-radiograph reports only)
-    v, l           not built yet: vitals and labs have no record-level slot or loader
+    v  vitals      the window: "<stay_id>:baseline" (first) / "<stay_id>:follow_up" (last)
+    l  labs        a lab entry (every panel lab at one charttime): earliest baseline / latest follow-up entry,
+                   preferring entries with at least MIN_PANEL_LABS labs
+
+Every modality is loaded raw, in one form per kind: a PIL image (x), a Bundle time series (e, v: physical units,
+native rate, NaN where not measured), a LabPanel table (l). Models never get pipeline-processed data: an adapter
+asks prepare() for the rate / length / gap filling / scaling it needs (Adapter.series_spec), and presents the
+result as it likes (tokens, text, an image), so every model reads the same stored data.
 """
 import hashlib
 import os
 import re
 import tempfile
+import warnings
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -29,6 +37,25 @@ from .modsets import MOD_NAMES, NOTE, ModalitySet
 # Every x_* table already holds the union of all levels (download/bq_export.py)
 TABLES = ["cohort", "x_stays", "stay_summary", "analysis_dataset",
           "x_vitals", "x_labs", "x_notes", "x_ecg", "x_cxr", "x_file_manifest"]
+
+# Vitals: x_vitals.label -> (channel, unit, plausible range). Values outside the range are charting errors and
+# count as not measured.
+VITALS = {
+    'Heart Rate': ('heart_rate', 'bpm', (1, 300)),
+    'Temperature Fahrenheit': ('temperature_f', 'degF', (77, 113)),
+    'Non Invasive Blood Pressure systolic': ('nibp_systolic', 'mmHg', (20, 300)),
+    'Non Invasive Blood Pressure diastolic': ('nibp_diastolic', 'mmHg', (5, 250)),
+    'Non Invasive Blood Pressure mean': ('nibp_mean', 'mmHg', (10, 300)),
+}
+# Labs: the 22-lab panel of modality_eda/labs/labs_eda.ipynb (hosp.labevents itemid -> short name, verified there)
+LAB_PANEL = {
+    50983: 'sodium', 50971: 'potassium', 50902: 'chloride', 50882: 'bicarbonate', 50868: 'anion_gap',
+    51006: 'bun', 50912: 'creatinine', 50931: 'glucose', 50893: 'calcium', 50960: 'magnesium',
+    50970: 'phosphate', 51222: 'hemoglobin', 51301: 'wbc', 51265: 'platelets',
+    51003: 'troponin_t', 50963: 'ntprobnp', 50862: 'albumin', 50885: 'bilirubin',
+    50861: 'alt', 50878: 'ast', 51237: 'inr', 50813: 'lactate',
+}
+MIN_PANEL_LABS = 5          # a lab entry with at least this many panel labs wins its slot over a sparser draw
 
 
 def stage(cfg, tables=TABLES, verbose=True):
@@ -56,6 +83,36 @@ class Tables:
         m['local_path'] = (self.cfg.raw.rstrip('/') + '/' + m.physionet_project + '/' + m.physionet_version
                            + '/' + m.relative_path)
         return m
+
+    def _read(self, name, columns, filters) -> pd.DataFrame:
+        """Some columns and rows of a staged table (x_vitals / x_labs are too large to read whole)."""
+        with fsio.open_(f'{self.cfg.data_dir()}/{name}.parquet') as f:
+            return pd.read_parquet(f, columns=columns, filters=filters)
+
+    @lru_cache(maxsize=None)
+    def vitals(self) -> pd.DataFrame:
+        """x_vitals rows of the VITALS channels whose value is plausible: stay_id, phase, hours_from_icu_admit,
+        channel (index into VITALS), valuenum."""
+        v = self._read('x_vitals', ['stay_id', 'phase', 'hours_from_icu_admit', 'label', 'valuenum'],
+                       [('label', 'in', list(VITALS))])
+        lo = v.label.map({k: r[2][0] for k, r in VITALS.items()})
+        hi = v.label.map({k: r[2][1] for k, r in VITALS.items()})
+        v = v[v.valuenum.between(lo, hi)].copy()
+        v['channel'] = v.label.map({k: i for i, k in enumerate(VITALS)}).astype(int)
+        v['stay_id'] = v.stay_id.astype('int64')
+        return v.drop(columns='label').reset_index(drop=True)
+
+    @lru_cache(maxsize=None)
+    def labs(self) -> pd.DataFrame:
+        """x_labs rows of the LAB_PANEL labs, one per (stay, charttime, lab) (the lowest labevent_id), with the
+        lab-entry key `entry` = "<stay_id>:<charttime ISO>" (one entry = every panel lab drawn at that time)."""
+        l = self._read('x_labs', ['stay_id', 'phase', 'labevent_id', 'charttime', 'hours_from_icu_admit', 'itemid',
+                                  'value', 'valuenum', 'valueuom', 'ref_range_lower', 'ref_range_upper', 'flag'],
+                       [('itemid', 'in', list(LAB_PANEL))])
+        l['stay_id'] = l.stay_id.astype('int64')
+        l['entry'] = l.stay_id.astype(str) + ':' + pd.to_datetime(l.charttime).dt.strftime('%Y-%m-%dT%H:%M:%S')
+        l = l.sort_values('labevent_id', kind='mergesort').drop_duplicates(['entry', 'itemid'])
+        return l.reset_index(drop=True)
 
 
 def available(paths, root) -> set:
@@ -158,7 +215,30 @@ def slots_n(tables: Tables, note_chest_only=False, **_):
     return pick_slots(note_rows(tables, note_chest_only), 'note_id', first='earliest')
 
 
-SLOT_BUILDERS = {'x': slots_x, 'e': slots_e, 'n': slots_n}
+def slots_v(tables: Tables, verbose=True, **_):
+    """One record per window: "<stay_id>:baseline" (the modality window) and "<stay_id>:follow_up"."""
+    v = tables.vitals()
+    rows = v.groupby(['stay_id', 'phase'], as_index=False).hours_from_icu_admit.min()
+    rows['record'] = rows.stay_id.astype(str) + ':' + rows.phase
+    if verbose:
+        print(f"{rows.stay_id.nunique():,} stays with vitals ({(rows.phase == 'follow_up').sum():,} with follow-up)")
+    return pick_slots(rows, 'record', first='earliest')
+
+
+def slots_l(tables: Tables, verbose=True, **_):
+    """One record per lab entry (every panel lab at one charttime): the earliest baseline entry and the latest
+    follow-up one, an entry with at least MIN_PANEL_LABS labs winning over a sparser draw inside the window."""
+    rows = (tables.labs().groupby('entry', as_index=False)
+            .agg(stay_id=('stay_id', 'first'), phase=('phase', 'first'),
+                 hours_from_icu_admit=('hours_from_icu_admit', 'first'), n_labs=('itemid', 'size')))
+    rows['full'] = rows.n_labs >= MIN_PANEL_LABS
+    if verbose:
+        print(f"{len(rows):,} lab entries over {rows.stay_id.nunique():,} stays "
+              f"({rows.full.mean():.0%} with >= {MIN_PANEL_LABS} panel labs)")
+    return pick_slots(rows, 'entry', first='earliest', prefer='full')
+
+
+SLOT_BUILDERS = {'x': slots_x, 'e': slots_e, 'n': slots_n, 'v': slots_v, 'l': slots_l}
 
 
 def slots_for(modset: ModalitySet, tables: Tables, note_chest_only=False, pins: pd.DataFrame = None,
@@ -182,6 +262,10 @@ def signal_loader(tables: Tables, mod: str):
         return images.load, images.path
     if mod == 'e':
         return EcgLoader().load, (lambda record: record)
+    if mod == 'v':
+        return VitalsLoader(tables).load, (lambda key: key)
+    if mod == 'l':
+        return LabsLoader(tables).load, (lambda key: key)
     raise NotImplementedError(f'no loader for {MOD_NAMES.get(mod, mod)} yet')
 
 
@@ -289,41 +373,115 @@ class ImageLoader:
 
 @dataclass
 class Bundle:
-    """A loaded multichannel series: z-scored rows plus the raw mean / std that OpenTSLM quotes in its label text."""
-    norm: np.ndarray                  # (K, L) float32, each row z-scored
-    mean: np.ndarray                  # (K,)
-    std: np.ndarray                   # (K,)
+    """A multichannel time series: the one form every series modality (ECG, vitals) is loaded in.
+
+    Loaders return it raw: physical units at the native rate, NaN where nothing was measured. A model never gets
+    it processed by the pipeline; its adapter asks for the rate, length, gap filling and scaling it needs with
+    prepare() (Adapter.series_spec), so every model reads the same stored data."""
+    values: np.ndarray                # (K, L): raw units, or z-scored after prepare(znorm=True); NaN = not measured
     names: List[str]
+    units: Optional[List[str]] = None
+    fs: Optional[float] = None        # samples per second (ECG 500, hourly vitals 1/3600)
+    t: Optional[np.ndarray] = None    # (L,) hours from ICU admission of each sample (windowed series), else None
+    mean: Optional[np.ndarray] = None  # (K,) raw mean / std per channel, set by prepare(znorm=True)
+    std: Optional[np.ndarray] = None
     info: Dict = field(default_factory=dict)
 
 
+def fill_nan(sig) -> int:
+    """Interpolate NaN gaps in place, per column of sig (L, K); an all-NaN column becomes 0. Returns the NaN count."""
+    n_nan = int(np.isnan(sig).sum())
+    for j in range(sig.shape[1]):
+        x, bad = sig[:, j], np.isnan(sig[:, j])
+        if bad.all():
+            x[:] = 0.0
+        elif bad.any():
+            x[bad] = np.interp(np.flatnonzero(bad), np.flatnonzero(~bad), x[~bad])
+    return n_nan
+
+
+def zscore(sig):
+    """Per-column z-score of sig (L, K) in float64 -> (norm (K, L) float32, mean (K,), std (K,)). NaN-aware when
+    gaps were not filled (an all-NaN channel keeps NaN mean / std)."""
+    if np.isnan(sig).any():
+        with np.errstate(invalid='ignore', divide='ignore'), warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            mean, std = np.nanmean(sig, 0), np.nanstd(sig, 0)
+    else:
+        mean, std = sig.mean(0), sig.std(0)
+    norm = (sig - mean) / np.where(std > 1e-6, std, 1.0)
+    return norm.T.astype(np.float32), mean, std
+
+
+def _resample(sig, t, fs, hz, how):
+    """sig (L, K) at fs -> at hz. 'stride' keeps every round(fs/hz)-th sample, 'mean' averages each bin of that
+    many samples (NaN-aware), 'linear' interpolates onto the new grid (any ratio; NaN next to a gap stays NaN)."""
+    if how in ('stride', 'mean'):
+        step = int(round(fs / hz))
+        if step < 1 or not np.isclose(fs / step, hz):
+            raise ValueError(f"how='{how}' needs fs / hz to be a whole number (fs={fs}, hz={hz}); use how='linear'")
+        if how == 'stride':
+            return sig[::step], (t[::step] if t is not None else None)
+        n = -(-len(sig) // step)
+        pad = np.full((n * step - len(sig), sig.shape[1]), np.nan)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)          # all-NaN bins stay NaN
+            out = np.nanmean(np.vstack([sig, pad]).reshape(n, step, -1), 1)
+        return out, (t[::step] if t is not None else None)
+    if how == 'linear':
+        old = np.arange(len(sig)) / fs
+        new = np.arange(int(np.floor(old[-1] * hz + 1e-9)) + 1) / hz
+        out = np.stack([np.interp(new, old, sig[:, j]) for j in range(sig.shape[1])], 1)
+        return out, (t[0] + new / 3600.0 if t is not None else None)
+    raise ValueError(f"unknown resampling {how!r}: 'stride' | 'mean' | 'linear'")
+
+
+def prepare(b: Bundle, hz: float = None, length: int = None, how: str = 'stride', fill: bool = False,
+            znorm: bool = False) -> Bundle:
+    """A stored Bundle as one model takes it; the stored one is never changed. In order:
+        hz      resample to this rate (`how`: 'stride' | 'mean' | 'linear'; see _resample)
+        length  cut to this many samples, or edge-pad up to it
+        fill    interpolate NaN gaps (info['n_nan'] = how many there were)
+        znorm   z-score each channel; values become float32, mean / std keep the raw scale
+    prepare(ecg, hz=100, length=1000, fill=True, znorm=True) is exactly what the ECG loader did before it returned
+    raw data (OpenTSLM's input), down to the last bit."""
+    sig, t, fs = b.values.T, b.t, b.fs                        # (L, K): the layout the operations run in
+    if hz is not None and fs is None:
+        raise ValueError("prepare(hz=...) needs the bundle's own rate (fs)")
+    if hz is not None and not np.isclose(hz, fs):
+        sig, t = _resample(sig, t, fs, hz, how)
+        fs = float(hz)
+    if length is not None:
+        sig, t = sig[:length], (t[:length] if t is not None else None)
+        if len(sig) < length:
+            k = length - len(sig)
+            sig = np.pad(sig, ((0, k), (0, 0)), mode='edge')
+            if t is not None:
+                t = np.concatenate([t, t[-1] + np.arange(1, k + 1) / (fs * 3600.0)])
+    sig = np.array(sig, dtype=np.float64)                     # own copy: the stored bundle stays as loaded
+    info = dict(b.info)
+    if fill:
+        info['n_nan'] = fill_nan(sig)
+    mean = std = None
+    if znorm:
+        values, mean, std = zscore(sig)
+    else:
+        values = sig.T
+    return Bundle(values, list(b.names), b.units, fs, t, mean, std, info)
+
+
 class EcgLoader:
-    """ECG record (header path without extension, local or gs://) -> Bundle. Port of the OpenTSLM notebook's
-    EcgLoader / SignalLoader, unchanged: physical units, every 5th sample (500 -> 100 Hz, as OpenTSLM trained on
-    PTB-XL), leads matched by name, NaN gaps interpolated, length fixed, per-lead z-score in float64.
-    wfdb reads local files only, so gs:// records are copied (.hea + .dat) to a local cache first."""
+    """ECG record (header path without extension, local or gs://) -> raw Bundle: the 12 leads matched by name, in
+    physical units (mV) at the recording's own rate (500 Hz), NaN gaps kept. The model's own rate, length and
+    scaling come from prepare() (OpenTSLM: 100 Hz, 1000 samples, gaps filled, z-scored, as it trained on PTB-XL).
+    Recent records are kept in memory (one ECG serves many records). wfdb reads local files only, so gs:// records
+    are copied (.hea + .dat) to a local cache first."""
     LEADS = ('I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6')
     cache_dir = os.path.join(tempfile.gettempdir(), 'mmd_ecg')
 
-    def __init__(self, leads=LEADS, length=1000, hz=100):
-        self.leads, self.length, self.hz = tuple(leads), length, hz
-
-    @staticmethod
-    def znorm(sig):                               # sig: (L, K)
-        mean, std = sig.mean(0), sig.std(0)
-        norm = (sig - mean) / np.where(std > 1e-6, std, 1.0)
-        return norm.T.astype(np.float32), mean, std
-
-    @staticmethod
-    def fill_nan(sig):
-        n_nan = int(np.isnan(sig).sum())
-        for j in range(sig.shape[1]):
-            x, bad = sig[:, j], np.isnan(sig[:, j])
-            if bad.all():
-                x[:] = 0.0
-            elif bad.any():
-                x[bad] = np.interp(np.flatnonzero(bad), np.flatnonzero(~bad), x[~bad])
-        return n_nan
+    def __init__(self, leads=LEADS, cache: int = 64):
+        self.leads = tuple(leads)
+        self.load = lru_cache(maxsize=cache)(self._load)
 
     def local(self, record):
         if not fsio.is_remote(record):
@@ -338,15 +496,79 @@ class EcgLoader:
                 os.replace(dst + ext + '.part', dst + ext)
         return dst
 
-    def load(self, record) -> Bundle:
+    def _load(self, record) -> Bundle:
         import wfdb
-        N = self.length
         rec = wfdb.rdrecord(self.local(record))
         pos = {n.lower(): i for i, n in enumerate(rec.sig_name)}
-        sig = rec.p_signal[:, [pos[l.lower()] for l in self.leads]].astype(np.float64)
-        sig = sig[::int(round(rec.fs / self.hz))][:N]
-        if len(sig) < N:
-            sig = np.pad(sig, ((0, N - len(sig)), (0, 0)), mode='edge')
-        n_nan = self.fill_nan(sig)
-        norm, mean, std = self.znorm(sig)
-        return Bundle(norm, mean, std, list(self.leads), dict(n_nan=n_nan))
+        idx = [pos[l.lower()] for l in self.leads]
+        sig = rec.p_signal[:, idx].astype(np.float64)         # (L, K), kept in this layout (values is its .T view)
+        sig.setflags(write=False)                             # cached and shared: prepare() works on a copy
+        return Bundle(sig.T, list(self.leads), [rec.units[i] for i in idx], float(rec.fs))
+
+
+class VitalsLoader:
+    """"<stay_id>:<phase>" -> raw Bundle of the VITALS channels on an hourly grid (fs = 1/3600), NaN in every hour
+    with nothing charted (no filling: missingness is the adapter's to handle, through prepare() or its own view).
+    Each hour holds the mean of its charted values. Both windows are the same length, so first and last swap:
+        baseline   the modality window [w_start, w_end), hours from ICU admission
+        follow_up  the window of that length ending at the stay's last charted follow-up vital (its hours before
+                   w_end stay NaN: only follow-up records fill it)"""
+    names = [c for c, _, _ in VITALS.values()]
+    units = [u for _, u, _ in VITALS.values()]
+
+    def __init__(self, tables: Tables):
+        v = tables.vitals()
+        self.h = v.hours_from_icu_admit.to_numpy(float)
+        self.ch = v.channel.to_numpy(int)
+        self.val = v.valuenum.to_numpy(float)
+        self.rows = v.groupby(['stay_id', 'phase']).indices
+        st = tables.get('x_stays')
+        hours = lambda c: (pd.to_datetime(st[c]) - pd.to_datetime(st.intime)).dt.total_seconds().to_numpy() / 3600
+        self.window = dict(zip(st.stay_id.astype('int64'), zip(hours('w_start'), hours('w_end'))))
+
+    def load(self, key) -> Bundle:
+        sid, phase = key.rsplit(':', 1)
+        sid = int(sid)
+        start, end = self.window[sid]
+        L = int(round(end - start))
+        pos = self.rows.get((sid, phase), np.array([], dtype=int))
+        h, ch, val = self.h[pos], self.ch[pos], self.val[pos]
+        if phase == 'follow_up':
+            start = (np.floor(h.max()) + 1 if len(h) else end + L) - L
+        b = np.floor(h - start).astype(int)
+        ok = (b >= 0) & (b < L)
+        total, n = np.zeros((len(VITALS), L)), np.zeros((len(VITALS), L))
+        np.add.at(total, (ch[ok], b[ok]), val[ok])
+        np.add.at(n, (ch[ok], b[ok]), 1)
+        with np.errstate(invalid='ignore'):
+            values = total / n                                # 0 / 0 = NaN: nothing charted that hour
+        return Bundle(values, list(self.names), list(self.units), 1 / 3600, start + np.arange(L, dtype=float),
+                      info=dict(stay_id=sid, phase=phase, n_charted=int(ok.sum())))
+
+
+@dataclass
+class LabPanel:
+    """One lab entry: every LAB_PANEL lab drawn at one charttime, as a table in LAB_PANEL order. Labs not drawn
+    then are NaN rows (missingness is the adapter's to handle)."""
+    table: pd.DataFrame               # index lab; value (numeric), text (as charted), unit, ref_low, ref_high, flag
+    hours: float                      # hours from ICU admission
+    info: Dict = field(default_factory=dict)
+
+
+class LabsLoader:
+    """"<stay_id>:<charttime ISO>" -> LabPanel."""
+    COLUMNS = {'valuenum': 'value', 'value': 'text', 'valueuom': 'unit', 'ref_range_lower': 'ref_low',
+               'ref_range_upper': 'ref_high', 'flag': 'flag'}
+
+    def __init__(self, tables: Tables):
+        self.labs = tables.labs()
+        self.rows = self.labs.groupby('entry').indices
+        self.order = list(LAB_PANEL.values())
+
+    def load(self, entry) -> LabPanel:
+        r = self.labs.iloc[self.rows[entry]]
+        t = (r.assign(lab=r.itemid.map(LAB_PANEL)).set_index('lab')[list(self.COLUMNS)]
+             .rename(columns=self.COLUMNS).reindex(self.order))
+        t.index.name = 'lab'
+        return LabPanel(t, float(r.hours_from_icu_admit.iloc[0]),
+                        dict(entry=entry, phase=r.phase.iloc[0], n_labs=int(len(r))))

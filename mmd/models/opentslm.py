@@ -76,7 +76,7 @@ class FusedPromptBuilder:
             return {"pre_prompt": pre, "time_series_text": [],
                     "time_series": [] if kind == "sp" else None, "post_prompt": post}
         texts = [self.LABEL.format(name=n, mean=m, std=s) for n, m, s in zip(bundle.names, bundle.mean, bundle.std)]
-        ts = torch.from_numpy(bundle.norm)
+        ts = torch.from_numpy(bundle.values)
         return {"pre_prompt": pre, "time_series_text": texts,
                 "time_series": [ts[i] for i in range(len(texts))] if kind == "sp" else ts,
                 "post_prompt": post}
@@ -102,6 +102,8 @@ class OpenTSLMSP(Adapter):
     supports_mean = True
     default_order = 'note first'
     kind = 'sp'
+    # the ECG as OpenTSLM trained on it (PTB-XL): 100 Hz, 10 s, gaps filled, each lead z-scored
+    series_spec = {'e': dict(hz=100, length=1000, fill=True, znorm=True)}
     answer_tokens = 8
     store_prefix = False                         # True: forward() also writes projector_mean (H,), the projector
                                                  # output averaged over leads and patches
@@ -128,7 +130,7 @@ class OpenTSLMSP(Adapter):
                     kind=self.kind, projector=type(self.model.projector).__name__)
 
     def sample_dict(self, sample: Sample) -> dict:
-        b = sample.signal
+        b = self.series(sample.signal, 'e')
         if sample.mean_signal:                   # placeholder series; the label quotes the cohort means
             if self.stat_mean is None:
                 raise RuntimeError('mean record outside inject_mean()')
@@ -210,7 +212,7 @@ class OpenTSLMSP(Adapter):
         hook = lambda m, i, o: cap.__setitem__('o', o.detach().float())
         with torch.no_grad():
             for b in range(0, len(bundles), batch):
-                bs = [x for x in bundles[b:b + batch] if x is not None]
+                bs = [self.series(x, 'e') for x in bundles[b:b + batch] if x is not None]
                 if not bs:
                     continue
                 samples = [self.prompts.sample(x, None, self.kind) for x in bs]
