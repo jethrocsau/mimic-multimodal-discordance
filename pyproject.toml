@@ -52,6 +52,7 @@ hf-modern = [
     "huggingface_hub>=0.30",
     "neurokit2>=0.2.10",        # ECG measurements for the text-serialized baselines (models/series_text.py)
     "PyWavelets",               # neurokit2's wavelet delineation
+    "wfdb",                     # reads the ECG files (data.EcgLoader) for chatts-8b and the -tsfeat models
 ]
 opentslm = [
     "torch>=2.4",

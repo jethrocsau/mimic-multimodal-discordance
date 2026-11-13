@@ -1158,6 +1158,7 @@ hf-modern = [
     { name = "torchvision", version = "0.26.0+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine != 'x86_64' and extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (platform_machine != 'x86_64' and extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (platform_machine != 'x86_64' and extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm') or (sys_platform != 'linux' and extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (sys_platform != 'linux' and extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (sys_platform != 'linux' and extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm') or (extra != 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
     { name = "torchvision", version = "0.29.1", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'x86_64' and sys_platform == 'linux' and extra == 'group-3-mmd-hf-modern') or (platform_machine == 'x86_64' and extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (platform_machine == 'x86_64' and extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (sys_platform == 'darwin' and extra == 'group-3-mmd-hf-modern') or (sys_platform != 'linux' and extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med') or (sys_platform != 'linux' and extra == 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-opentslm') or (sys_platform != 'linux' and extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm') or (sys_platform == 'darwin' and extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm') or (extra != 'group-3-mmd-hf-modern' and extra == 'group-3-mmd-llava-med' and extra == 'group-3-mmd-opentslm')" },
     { name = "transformers", version = "4.57.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "wfdb", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 llava-med = [
     { name = "accelerate", version = "0.29.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -1213,6 +1214,7 @@ hf-modern = [
     { name = "torchvision", marker = "platform_machine != 'x86_64' or sys_platform != 'linux'" },
     { name = "torchvision", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "mmd", group = "hf-modern" } },
     { name = "transformers", specifier = ">=4.53,<5" },
+    { name = "wfdb" },
 ]
 llava-med = [
     { name = "accelerate", specifier = ">=0.25,<0.30" },
