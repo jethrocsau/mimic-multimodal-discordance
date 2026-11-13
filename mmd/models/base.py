@@ -35,6 +35,11 @@ COMMON = ('yes_probability', 'prompt_last_state', 'prompt_mean_state', 'signal_m
 REGISTRY: Dict[str, type] = {}
 MODULES = {'llava-med': 'llava_med', 'gemma3-4b': 'gemma', 'qwen2.5-vl-7b': 'qwen_vl', 'qwen3-vl-8b': 'qwen_vl',
            'opentslm-sp': 'opentslm', 'opentslm-sp-gemma': 'opentslm',
+           'opentslm-sp-3b': 'opentslm',
+           'opentslm-flamingo': 'opentslm', 'opentslm-flamingo-gemma': 'opentslm',
+           'opentslm-flamingo-3b': 'opentslm',
+           'chatts-8b': 'chatts',
+           'llama3.1-8b-tsfeat': 'ts_text', 'qwen3-8b-tsfeat': 'ts_text',
            'llama3.2-vision-11b': 'llama_vision',
            'internvl3-8b': 'internvl',
            'llama3.1-8b': 'text_llm'}   # model name -> module under mmd.models

@@ -194,6 +194,75 @@ class Zoo:
                           reference_signals=lambda mod: list(reference_signals(mod)), run_ref=repo_ref(),
                           batch=batch)
 
+    # ── upload: a locally generated run -> the shared root ───────────────────
+    def upload(self, model: str, to: str, merge: bool = False, dry_run: bool = False) -> dict:
+        """Copy a model's run folder generated under a local root (MMD_ROOT=<folder>) to the shared root `to`
+        (e.g. gs://mimic-mmd), together with the cohort manifest of every modality set it ran that `to` does not
+        have yet. Only generated files move: never data, raw files or weights. Refuses when
+          - a set's cohort exists at `to` with another hash (the records would not match its manifest);
+          - `to` already holds chunks of this model, unless `merge` (then no chunk name may collide);
+          - the local run carries read-only sources (imported folders hold local paths).
+        The index is not copied but rebuilt at `to` from the uploaded chunks (it holds full paths)."""
+        import dataclasses
+        if fsio.is_remote(self.cfg.root):
+            raise ValueError(f'root is {self.cfg.root}: upload copies from a local root (set MMD_ROOT=<folder>)')
+        dst_cfg = dataclasses.replace(self.cfg, root=to.rstrip('/'))
+        A = get(model)
+        src, dst = self.cfg.emb_dir(model), dst_cfg.emb_dir(model)
+        store = EmbeddingStore(src)
+        if not fsio.exists(f'{src}/manifest.json'):
+            raise ValueError(f'{src}: no local run of {model} (manifest.json missing)')
+        if store.sources():
+            raise ValueError(f'{src}/sources.json lists read-only folders; upload those runs by hand')
+        files = {}                                          # local path -> destination
+        cohorts = []
+        for ms, h in store.run_info().get('cohort_hashes', {}).items():
+            there = f'{dst_cfg.cohort_dir(ms)}/manifest.json'
+            if fsio.exists(there):
+                theirs = fsio.read_json(there)['hash']
+                if theirs != h:
+                    raise ValueError(f'{ms}: local records were generated on cohort {h}, {to} has {theirs}')
+                continue
+            here = self.cfg.cohort_dir(ms)
+            if fsio.read_json(f'{here}/manifest.json')['hash'] != h:
+                raise ValueError(f'{ms}: the local cohort was rebuilt after {model} ran on it')
+            cohorts.append(ms)
+            for p in fsio.glob(f'{here}/**'):
+                if os.path.isfile(p):
+                    files[p] = f'{dst_cfg.cohort_dir(ms)}/{os.path.relpath(p, here)}'
+        theirs = {os.path.basename(p) for p in EmbeddingStore(dst).paths(own_only=True)}
+        mine = [p for p in fsio.glob(f'{src}/*') if os.path.isfile(p) and os.path.basename(p) != 'index.parquet']
+        if theirs and not merge:
+            raise ValueError(f'{dst} already holds {len(theirs)} chunks of {model}; --merge adds to them')
+        clash = sorted(theirs & {os.path.basename(p) for p in mine})
+        if clash:
+            raise ValueError(f'{len(clash)} chunk names exist at both ends (e.g. {clash[0]}); generate with --shard '
+                             f'or rename before merging')
+        meta = {'runs.parquet', 'manifest.json'}
+        for p in mine:
+            if os.path.basename(p) not in meta or not merge:
+                files[p] = f'{dst}/{os.path.basename(p)}'
+        print(f'{model}: {sum(1 for p in mine if p.endswith(".npz"))} chunks -> {dst}'
+              + (f'; new cohorts: {", ".join(cohorts)}' if cohorts else ''))
+        if dry_run:
+            for p, q in sorted(files.items()):
+                print(f'  {p} -> {q}')
+            return files
+        fs = fsio.fs_of(dst)
+        cohort_files = {p: q for p, q in files.items() if '/cohort/' in q}
+        for p, q in sorted(files.items(), key=lambda kv: (kv[0] in cohort_files, kv[0].endswith('manifest.json'))):
+            fsio.makedirs(os.path.dirname(q))
+            fs.put_file(p, q)                               # each cohort's manifest.json (its marker) goes last
+        if merge:                                           # append this run's log and cohort hashes
+            dst_store = EmbeddingStore(dst)
+            old = fsio.read_parquet(f'{dst}/runs.parquet') if fsio.exists(f'{dst}/runs.parquet') else pd.DataFrame()
+            fsio.write_parquet(pd.concat([old, fsio.read_parquet(f'{src}/runs.parquet')], ignore_index=True),
+                               f'{dst}/runs.parquet')
+            for ms, h in store.run_info().get('cohort_hashes', {}).items():
+                dst_store.record_cohort(A.info(), ms, h)
+        Zoo(dst_cfg, ()).rebuild_index(model)
+        return files
+
     # ── analyse ──────────────────────────────────────────────────────────────
     def analyse(self, model: str, modset=None, strategies=None, charts=True, selftest=True):
         from .analysis.report import analyse_model

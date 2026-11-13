@@ -75,6 +75,9 @@ def smoke(adapter, builder: SampleBuilder, records, n=3, verbose=True, batch=1):
         row.update({f'shape:{k}': np.shape(v) for k, v in out.items() if np.ndim(v) > 0})
         rows.append(row)
     df = pd.DataFrame(rows)
+    if verbose and hasattr(adapter, 'prompt'):        # the fullest input, as the model reads it
+        r = max(picked, key=lambda r: sum(v != 'none' for v in parse_record(r)[1].values()))
+        print(f'prompt of {r}:\n{adapter.prompt(singles[r][0])}\n')
     if verbose:
         print(adapter.describe())
         print(df.to_string(index=False))
@@ -166,3 +169,80 @@ def run(adapter, manifest: Manifest, store: EmbeddingStore, builder: SampleBuild
                   shard='' if shard is None else f'{shard[0]}/{shard[1]}', batch=batch, saved=saved,
                   minutes=round((time.time() - t0) / 60, 1))
     return saved
+
+
+def synthetic_sample(mods, record=None):
+    """A made-up input carrying `mods` (no MIMIC data): a grey gradient film, a 12-lead sine ECG, a 24 h vitals
+    window, a lab panel and a short report. For checking an adapter loads and runs before any data is mirrored."""
+    from PIL import Image
+
+    from .data import LAB_PANEL, VITALS, Bundle, LabPanel
+    from .models.base import Sample
+    sig = {}
+    if 'x' in mods:
+        g = np.tile(np.linspace(0, 255, 512, dtype=np.uint8), (512, 1))
+        sig['x'] = Image.fromarray(np.stack([g, g.T, g], -1))
+    if 'e' in mods:
+        t = np.arange(5000) / 500.0
+        leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+        sig['e'] = Bundle(np.stack([np.sin(2 * np.pi * 1.2 * t + k) ** 15 for k in range(12)]), leads,
+                          ['mV'] * 12, 500.0, info=dict(record='synthetic-ecg'))
+    if 'v' in mods:
+        v = np.full((len(VITALS), 24), np.nan)
+        v[0], v[2], v[3], v[4] = 95 + 5 * np.sin(np.arange(24) / 3), 105.0, 60.0, 75.0
+        v[1, ::4] = 99.1
+        sig['v'] = Bundle(v, [c for c, _, _ in VITALS.values()], [u for _, u, _ in VITALS.values()], 1 / 3600,
+                          np.arange(24, dtype=float))
+    if 'l' in mods:
+        tab = pd.DataFrame(index=pd.Index(list(LAB_PANEL.values()), name='lab'),
+                           columns=['value', 'text', 'unit', 'ref_low', 'ref_high', 'flag'], dtype=object)
+        tab.loc['sodium'] = [131.0, '131', 'mEq/L', 133.0, 145.0, 'abnormal']
+        tab.loc['creatinine'] = [2.1, '2.1', 'mg/dL', 0.5, 1.2, 'abnormal']
+        tab.loc['lactate'] = [3.4, '3.4', 'mmol/L', 0.5, 2.0, 'abnormal']
+        for c in ('value', 'ref_low', 'ref_high'):
+            tab[c] = tab[c].astype(float)
+        sig['l'] = LabPanel(tab, 2.0)
+    report = ('FINDINGS: Moderate cardiomegaly. Bilateral pleural effusions. IMPRESSION: Pulmonary edema.'
+              if 'n' in mods else None)
+    return Sample(record or ('synthetic|' + '+'.join(mods)), sig, {}, report)
+
+
+def synthetic_smoke(adapter, batch=1, verbose=True):
+    """Every arm of the adapter's modalities (each alone, each with the note, all together) on synthetic inputs:
+    readout shapes, answers, log-odds, spans, s/record; with batch > 1 also batched vs single. Nothing stored."""
+    from .modsets import MOD_ORDER, NOTE
+    mods = [m for m in MOD_ORDER if m in adapter.modalities]
+    arms = [(m,) for m in mods] + [(m, NOTE) for m in mods if m != NOTE] + [tuple(mods)]
+    arms = list(dict.fromkeys(tuple(m for m in MOD_ORDER if m in a) for a in arms))
+    rows, singles, times = [], {}, []
+    for a in arms:
+        s = synthetic_sample(a)
+        t = time.time()
+        out = adapter.forward(s)
+        times.append(time.time() - t)
+        singles[s.record] = (s, out)
+        row = dict(arm='+'.join(a), seconds=round(times[-1], 2), answer=out.get('answer_text'),
+                   yes_probability=round(float(out['yes_probability']), 4),
+                   yes_log_odds=round(float(out.get('yes_log_odds', np.nan)), 2), signal_span=out.get('signal_span'))
+        row.update({f'shape:{k}': np.shape(v) for k, v in out.items() if np.ndim(v) > 0})
+        rows.append(row)
+    df = pd.DataFrame(rows)
+    if verbose:
+        if hasattr(adapter, 'prompt'):
+            print(f'prompt of {arms[-1]}:\n{adapter.prompt(synthetic_sample(arms[-1]))}\n')
+        print(adapter.describe())
+        print(df.to_string(index=False))
+        print(f'seconds per record (median, after the first): {np.median(times[1:] or times):.2f}')
+    if batch > 1 and adapter.batches:
+        full = singles[f"synthetic|{'+'.join(arms[-1])}"][0]
+        group = {f'{full.record}#{i}': (synthetic_sample(arms[-1], f'{full.record}#{i}'), None) for i in range(batch)}
+        outs = adapter.forward_batch([s for s, _ in group.values()])
+        one = singles[full.record][1]
+        cos = min(float(np.dot(np.asarray(one[k], float), np.asarray(o[k], float)) /
+                        (np.linalg.norm(np.asarray(one[k], float)) * np.linalg.norm(np.asarray(o[k], float)) + 1e-12))
+                  for o in outs for k, v in one.items()
+                  if np.ndim(v) == 1 and np.size(v) > 1 and not np.isnan(np.asarray(v, float)).all())
+        dlo = max(abs(float(one.get('yes_log_odds', 0)) - float(o.get('yes_log_odds', 0))) for o in outs)
+        print(f'batched x{batch} (identical inputs) vs single: min cosine {cos:.4f}, max |Δ log-odds| {dlo:.3f} -> '
+              + ('OK to batch' if cos > 0.99 and dlo < 0.5 else 'CHECK batching'))
+    return df

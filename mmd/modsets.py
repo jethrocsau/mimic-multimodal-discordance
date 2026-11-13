@@ -23,6 +23,7 @@ MAX_MODS = len(MOD_ORDER)
 
 BUILTIN = {'cxr_notes': ('x', 'n'), 'ecg_notes': ('e', 'n'), 'vitals_notes': ('v', 'n'), 'labs_notes': ('l', 'n'),
            'vitals_labs_notes': ('v', 'l', 'n'), 'cxr_vitals_labs_notes': ('x', 'v', 'l', 'n'),
+           'ecg_vitals_labs_notes': ('e', 'v', 'l', 'n'),
            'all5': ('e', 'x', 'v', 'l', 'n')}
 
 

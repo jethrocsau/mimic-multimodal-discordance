@@ -214,8 +214,9 @@ stored for every model chosen (`results/zoo/discordance_cohort_<set>`).
 - Credentialed PhysioNet access to MIMIC-IV, MIMIC-CXR(-JPG) and MIMIC-IV-ECG.
 - A Hugging Face token whose account has accepted the terms of every gated model you run (`google/gemma-3-4b-it`,
   `google/gemma-3-1b-pt` for `opentslm-sp-gemma`, `meta-llama/Llama-3.2-11B-Vision-Instruct` for
-  `llama3.2-vision-11b`, `meta-llama/Llama-3.1-8B-Instruct` for `llama3.1-8b`). Qwen3-VL and InternVL3 are not
-  gated.
+  `llama3.2-vision-11b`, `meta-llama/Llama-3.1-8B-Instruct` for `llama3.1-8b` and `llama3.1-8b-tsfeat`,
+  `meta-llama/Llama-3.2-1B` / `-3B` for the OpenTSLM Llama checkpoints, `google/gemma-3-1b-pt` for the OpenTSLM
+  Gemma ones). Qwen3-VL, Qwen3-8B, ChatTS-8B and InternVL3 are not gated.
 
 ### Google Cloud: project, bucket, machines
 ```bash
@@ -337,8 +338,11 @@ Each model family has its own environment, because their library versions confli
 export UV_PROJECT_ENVIRONMENT=.venv-hf-modern HF_TOKEN=hf_...     # every model of the hf-modern group (gemma3-4b, qwen*, llama*, internvl3-8b)
 uv sync --frozen --group hf-modern
 #   llava-med:            .venv-llava-med  --group llava-med, then: uv run --no-sync mmd setup llava-med
-#   opentslm-sp / -gemma: .venv-opentslm   --group opentslm
+#   opentslm-*:           .venv-opentslm   --group opentslm, then: uv run --no-sync mmd setup open-flamingo
+#                         (open-flamingo 2.x for the Flamingo checkpoints; rerun after every sync of that group)
+#   chatts-8b, *-tsfeat:  .venv-hf-modern  (the hf-modern group also holds neurokit2 for the ECG measurements)
 uv run --no-sync mmd setup check                                  # CUDA: True
+uv run --no-sync mmd smoke-synthetic --model gemma3-4b --batch 4  # made-up inputs, every arm: no data needed
 
 # per model
 uv run --no-sync mmd weights stage --model gemma3-4b              # Hugging Face -> local + {root}/weights/
@@ -359,6 +363,14 @@ uv run --no-sync mmd perturb --model gemma3-4b                    # the full run
   records it. If a batch fails (e.g. out of GPU memory) its records are retried one at a time.
 - **Split across GPUs:** `--shard 0/2` on one VM and `--shard 1/2` on another.
 - **Spot preemption:** start the VM again and rerun the same command; it resumes.
+- **Generate locally, upload only the results:** mirror `v1/data`, `v1/cohort` and `physionet/` to a local folder,
+  `export MMD_ROOT=<folder>`, build any new cohort and run `perturb` there, then
+  `uv run mmd upload --model <model> --to gs://<bucket> [--dry-run]`. It copies the model's run folder and any cohort
+  the bucket lacks, refuses a cohort with another hash or existing chunks (unless `--merge`), and rebuilds the index
+  at the bucket. Data, raw files and weights are never uploaded.
+- **Which torch:** the lock gives aarch64 (e.g. a GB10) PyPI's torch (CUDA 13, driver ≥ 580) and x86_64 Linux (e.g.
+  a Brev or cloud GPU) the CUDA 12.8 build from the PyTorch index (driver ≥ 525), for the hf-modern and opentslm
+  groups.
 
 **On Colab instead of a VM** (L4 or A100 runtime). It writes to the same bucket, so a VM can resume where Colab
 stopped; run the two on the same records at once only with `--shard`. `uv run` starts a separate process, which does
@@ -500,10 +512,42 @@ The tables `analyse` (and, last three rows, `discordance`) writes:
 | `qwen3-vl-8b` | x + v + l + n | hf-modern | not offered | none (general web data) |
 | `internvl3-8b` | x + v + l + n | hf-modern | not offered | none (general web data) |
 | `llama3.1-8b` (text only) | v + l + n | hf-modern | none (no signal) | none (general web data) |
-| `opentslm-sp` (Llama-3.2-1B) | e + n | opentslm | projector output + label statistics | none |
-| `opentslm-sp-gemma` (Gemma-3-1B) | e + n | opentslm | projector output + label statistics | none |
+| `opentslm-sp` (Llama-3.2-1B) | e + v + l + n | opentslm | ECG projector output + label statistics | none |
+| `opentslm-sp-gemma` (Gemma-3-1B) | e + v + l + n | opentslm | ECG projector output + label statistics | none |
+| `opentslm-sp-3b` (Llama-3.2-3B) | e + v + l + n | opentslm | ECG projector output + label statistics | none |
+| `opentslm-flamingo` (Llama-3.2-1B) | e + v + l + n | opentslm | not offered | none |
+| `opentslm-flamingo-gemma` (Gemma-3-1B) | e + v + l + n | opentslm | not offered | none |
+| `opentslm-flamingo-3b` (Llama-3.2-3B) | e + v + l + n | opentslm | not offered | none |
+| `chatts-8b` (Qwen3-8B) | e + v + l + n | hf-modern | not offered | none (synthetic training series) |
+| `llama3.1-8b-tsfeat` (text only) | e + v + l + n | hf-modern | none (no encoder) | none (general web data) |
+| `qwen3-8b-tsfeat` (text only) | e + v + l + n | hf-modern | none (no encoder) | none (general web data) |
 
 A model runs every set inside the modalities it takes; `mmd modsets` shows which.
+
+### Series models and their text baselines
+How each model is given the ECG (e) and vitals (v); labs (l) and the note (n) are text for every model here. Run
+them on `ecg_notes`, `vitals_notes`, `labs_notes`, `vitals_labs_notes` and `ecg_vitals_labs_notes`.
+
+| model | backbone | how the series enter | e | v |
+|---|---|---|---|---|
+| `opentslm-sp`, `-sp-gemma`, `-sp-3b` | Llama-3.2-1B, Gemma-3-1B, Llama-3.2-3B | soft prompt (patch encoder → tokens) | 12 leads, 100 Hz × 10 s, z-scored | hourly, one series per charted channel |
+| `opentslm-flamingo`, `-flamingo-gemma`, `-flamingo-3b` | the same three | gated cross-attention (perceiver) | same | same (zero-padded to the ECG's length when both are given) |
+| `chatts-8b` | Qwen3-8B | patch encoder → tokens; offset / scale / min / max quoted as text | 12 leads, 100 Hz × 10 s, in mV | hourly, raw units |
+| `qwen3-8b-tsfeat`, `llama3.1-8b-tsfeat` | Qwen3-8B, Llama-3.1-8B | none: text | measurements (rate, rhythm, PR, QRS, QT / QTc, axis) | every hourly value |
+| `llama3.1-8b` (Zifan) | Llama-3.1-8B | none: text | – | summary (last value, range, hours charted) |
+
+What the comparisons isolate:
+- **Fusion type, same backbone:** each `opentslm-sp*` model against its `opentslm-flamingo*` twin.
+- **Scale:** the 1B models against the 3B ones.
+- **Series encoder against text, same LLM:** `chatts-8b` against `qwen3-8b-tsfeat`.
+- **Full vitals against a summary:** `llama3.1-8b-tsfeat` against `llama3.1-8b` (also differ by the ECG).
+- **Not run for now:** the ECG as raw numbers (`ecg_text = 'raw'` in `models/ts_text.py`, ~10k tokens, ~25× the
+  cost of `-tsfeat`).
+
+Their prompts come from `mmd/series_prompts.py`, a module separate from `prompts.py`: it borrows only the question
+and the instructions, so no existing model's prompt changed (`tests/test_existing_prompts.py` checks this against
+`tests/golden_prompts.json`). OpenTSLM keeps its original ECG prompt (`FusedPromptBuilder`) for records with only
+an ECG and / or a note; records with vitals or labs take `series_prompts.OpenTSLMSeriesBuilder`.
 
 **Why no MIMIC-trained models.** A model trained on MIMIC-CXR (for example MedGemma, CheXagent, Lingshu, RadVLM or
 MAIRA-2) may have seen this cohort's films and reports, so its reliance could reflect memorisation rather than
@@ -525,17 +569,32 @@ every model on stays whose baseline film is outside the MIMIC-CXR training split
 
 ## 7. Known gaps
 - **No adapter takes two signals yet**, so sets such as `cxr_ecg_notes` build and count but cannot run.
-- **Vitals and labs** load raw (`data.VitalsLoader`, `data.LabsLoader`). `llama3.2-vision-11b` reads them as text
-  blocks in the prompt (`models/clinical_text.py`): per vital the last charted hour, range and hours charted; per lab
-  the value, flagged low / high against its reference range. `VITALS` has no respiratory rate or SpO2 yet. A set with
-  v / l has more configurations per recipient: start with `--levels L1 --max-order 1`.
+- **Vitals and labs** load raw (`data.VitalsLoader`, `data.LabsLoader`). The image-text models and `llama3.1-8b`
+  read them as text blocks in the prompt (`models/clinical_text.py`): per vital the last charted hour, range and
+  hours charted; per lab the value, flagged low / high against its reference range. The series models take the
+  vitals as series and the `-tsfeat` baselines as the full hourly grid (see 6). `VITALS` has no respiratory rate or SpO2
+  yet. A set with v / l has more configurations per recipient: start with `--levels L1 --max-order 1`.
+- **Vitals are out of distribution for OpenTSLM:** its ECG checkpoints were trained on ECGs only, so 24-point vitals
+  series are new to them. ChatTS-8B was aligned on varied synthetic series, short ones included.
+- **OpenTSLM-Flamingo** answers in prose (it was trained to reason first); its P(Yes) comes from the first-token
+  logits as for every model. With vitals and an ECG in one record, the vitals series are zero-padded to 1000 samples
+  (one media tensor per record). The SP models encode each modality at its own length instead (OpenTSLM's own
+  batching would pad the vitals to the ECG too), one record at a time.
+- **OpenTSLM-Gemma:** opentslm 0.1.0 maps the Gemma checkpoints to `google/gemma-3-1b`, which does not exist; the
+  adapters load `google/gemma-3-1b-pt` (the base its README names) through `base_llm`. Without an ECG its answers
+  are not words (the base model was never instruction-tuned); P(Yes) still comes from the logits.
+- **OpenTSLM-3B** moves P(Yes) very little between inputs (differences in the 4th-5th decimal on synthetic arms);
+  read it from `yes_log_odds` and the hidden states rather than from P(Yes).
+- **ChatTS-8B** runs one record per forward (its merge step re-pads batches itself) and stores no
+  `signal_mean_state`; its pre-fusion readouts are the series encoder's output per modality.
+- **ECG measurements** (`-tsfeat`) come from neurokit2 on lead II: the rate and rhythm are reliable, the wavelet
+  delineation of the QRS / QT boundaries less so (QRS reads long on simulated ECGs).
 - **First run of every model:** read the `--smoke` output (Yes / No token ids, the signal span, module names).
 - **New models, not yet run on a GPU:** `qwen3-vl-8b` (check ~256 merged tokens per film), `internvl3-8b` (check a
   signal span of 256, one tile), `llama3.1-8b` (check the prompt start: the Llama 3.1 template adds a system header).
 - **Qwen2.5-VL:** films are resized to about 448×448 pixels (aspect ratio kept), so each gives ~256 image tokens; no mean
   swap yet.
 - **Pinning:** pin `revision` for each model, and `LLAVA_MED_COMMIT`, once its smoke test passes.
-- **OpenTSLM-Gemma:** check in `--smoke` that `load_pretrained` loads the Gemma checkpoint, and check its Yes / No ids.
 - **OpenTSLM batch size:** records run one at a time. Embeddings imported from a batched run can differ from these in
   the last digits of P(Yes).
 - **Donor AUROCs in `analyse`:** the `auroc` table scores donor arms on predictions averaged over the donor draws,

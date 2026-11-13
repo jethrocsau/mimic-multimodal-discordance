@@ -50,9 +50,12 @@ hf-modern = [
     "transformers>=4.53,<5",
     "accelerate>=1.0",
     "huggingface_hub>=0.30",
+    "neurokit2>=0.2.10",        # ECG measurements for the text-serialized baselines (models/series_text.py)
+    "PyWavelets",               # neurokit2's wavelet delineation
 ]
 opentslm = [
     "torch>=2.4",
+    "torchvision",              # pulled in by opentslm anyway; listed so x86_64 takes it from the cu128 index
     "opentslm",
     "wfdb",
     "transformers==4.57.3",
@@ -67,6 +70,24 @@ conflicts = [
         { group = "hf-modern" },
         { group = "opentslm" },
     ],
+]
+
+# x86_64 Linux (e.g. a Brev/cloud GPU box): torch from the CUDA 12.8 index, which runs on NVIDIA drivers >= 525
+# (PyPI's torch >= 2.9 is built for CUDA 13 and needs driver >= 580). aarch64 (the GB10) keeps PyPI's CUDA 13 build.
+# llava-med is left on PyPI: its torch < 2.6 is already a CUDA 12 build.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'", group = "hf-modern" },
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'", group = "opentslm" },
+]
+torchvision = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'", group = "hf-modern" },
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'", group = "opentslm" },
 ]
 
 [build-system]

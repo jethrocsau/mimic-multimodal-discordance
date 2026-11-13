@@ -1,7 +1,7 @@
 """`mmd` command line: a thin layer over mmd.zoo.Zoo. Settings come from mmd.toml / MMD_* env vars (see
 mmd/config.py); --cohort overrides the cohort version, --define adds modality sets for this command.
 
-    mmd setup check | setup llava-med
+    mmd setup check | setup llava-med | setup open-flamingo
     mmd data stage
     mmd modsets [--define cxr_ecg_notes=e,x,n] [--strategies ...] [--max-order 2]
     mmd cohort build --modset cxr_notes [--strategies all] [--max-order 2] [--donor-plans <dir>] [--pins <csv>]
@@ -9,6 +9,8 @@ mmd/config.py); --cohort overrides the cohort version, --define adds modality se
     mmd weights stage --model gemma3-4b
     mmd perturb --model gemma3-4b [--modset cxr_notes] [--smoke 3 | --plan] [--levels L1]
                 [--strategies within_patient,matched_label_swap] [--max-order 1] [--shard 0/2]
+    mmd smoke-synthetic --model gemma3-4b [--batch 4]        (made-up inputs: check a model runs, no data needed)
+    mmd upload --model gemma3-4b --to gs://<bucket> [--dry-run] [--merge]   (a run generated under a local root)
     mmd analyse --model gemma3-4b [--modset cxr_notes]
     mmd compare-notebook --model llava-med --notebook-dir gs://<bucket>/v1/emb/llava-med/imported/swap4
     mmd zoo --modset cxr_notes [--models llava-med,gemma3-4b] [--exclude-exposed] [--split-file <csv>]
@@ -112,6 +114,13 @@ def setup_llava(commit: str = typer.Option(None, help='LLaVA-Med commit the exis
     _sh(['uv', 'pip', 'install', '--no-deps', f'git+https://github.com/microsoft/LLaVA-Med.git@{ref}'])
 
 
+@setup_app.command('open-flamingo')
+def setup_open_flamingo(version: str = typer.Option('2.0.1', help='open-flamingo release OpenTSLM-Flamingo needs')):
+    """Install open-flamingo 2.x without its torch==2.0.1 pin (after `uv sync --group opentslm`): the resolver can
+    only pick 0.0.2, whose API OpenTSLM-Flamingo does not match. Rerun after every `uv sync` of that environment."""
+    _sh(['uv', 'pip', 'install', '--no-deps', f'open-flamingo=={version}', 'einops-exts'])
+
+
 # ── data ───────────────────────────────────────────────────────
 @data_app.command('stage')
 def data_stage(cohort: Optional[str] = CohortOpt):
@@ -195,6 +204,28 @@ def perturb(model: str = typer.Option(...), modset: Optional[str] = ModelModsetO
                weights, batch)
     if plan:
         print(out.to_string(index=False))
+
+
+@app.command('smoke-synthetic')
+def smoke_synthetic(model: str = typer.Option(...), device: str = 'cuda',
+                    batch: int = typer.Option(1, help='also run a batch of this many and compare with single')):
+    """Load a model and run every arm of its modalities on made-up inputs (no MIMIC data, no manifest, nothing
+    stored): the first check of an adapter on a new machine."""
+    from .models.base import get
+    from .runner import synthetic_smoke
+    A = get(model)
+    adapter = A(_cfg()).load(device)
+    synthetic_smoke(adapter, batch=batch)
+
+
+@app.command()
+def upload(model: str = typer.Option(...),
+           to: str = typer.Option(..., help='the shared root, e.g. gs://mimic-mmd'),
+           merge: bool = typer.Option(False, help='add to chunks of the model already there'),
+           dry_run: bool = typer.Option(False, '--dry-run', help='list what would be copied, copy nothing'),
+           cohort: Optional[str] = CohortOpt, define: List[str] = DefineOpt):
+    """Copy a model's locally generated run (MMD_ROOT=<local folder>) and any cohort it needs to the shared root."""
+    _run(_zoo(cohort, define).upload, model, to, merge, dry_run)
 
 
 @app.command()
